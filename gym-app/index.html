@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f1220">
+<link rel="manifest" href="manifest.json">
+<title>GymQuest — тренировки</title>
+<style>
+  :root{
+    --bg:#0f1220; --card:#1a1f35; --card2:#232a48; --text:#eef1ff; --muted:#8b93b8;
+    --accent:#7c5cff; --accent2:#00d4a6; --gold:#ffc93c; --danger:#ff5c7a;
+    --radius:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text); min-height:100vh;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .app{max-width:520px; margin:0 auto; padding:16px 16px 90px;}
+  header{display:flex; align-items:center; justify-content:space-between; padding:8px 0 16px;}
+  .logo{font-size:22px; font-weight:800;}
+  .logo span{color:var(--accent);}
+  .streak{background:var(--card); border-radius:999px; padding:8px 14px; font-weight:700; font-size:15px;}
+
+  /* Level bar */
+  .level-card{background:linear-gradient(135deg,#2b2470,#1a1f35); border-radius:var(--radius); padding:16px; margin-bottom:18px;}
+  .level-row{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .level-title{font-weight:800; font-size:18px;}
+  .level-xp{color:var(--muted); font-size:13px;}
+  .bar{height:12px; background:#12152a; border-radius:999px; overflow:hidden;}
+  .bar-fill{height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:999px; transition:width .6s ease;}
+  .stats-row{display:flex; gap:10px; margin-top:12px;}
+  .stat{flex:1; background:#12152a; border-radius:12px; padding:10px; text-align:center;}
+  .stat b{display:block; font-size:18px;}
+  .stat small{color:var(--muted); font-size:11px;}
+
+  h2{font-size:16px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin:18px 0 10px;}
+
+  /* Workout cards */
+  .wcard{
+    background:var(--card); border-radius:var(--radius); padding:16px; margin-bottom:12px;
+    display:flex; align-items:center; gap:14px; cursor:pointer; border:1px solid transparent;
+    transition:transform .1s;
+  }
+  .wcard:active{transform:scale(.98);}
+  .wicon{font-size:32px; width:56px; height:56px; display:flex; align-items:center; justify-content:center;
+    background:var(--card2); border-radius:14px; flex-shrink:0;}
+  .winfo{flex:1; min-width:0;}
+  .winfo b{font-size:16px; display:block; margin-bottom:3px;}
+  .winfo small{color:var(--muted); font-size:13px;}
+  .wxp{color:var(--gold); font-weight:800; font-size:14px; white-space:nowrap;}
+  .wdone{font-size:12px; color:var(--accent2); font-weight:700;}
+
+  /* Workout screen */
+  .screen{display:none;}
+  .screen.active{display:block;}
+  .back{background:var(--card); border:none; color:var(--text); font-size:15px; padding:10px 16px;
+    border-radius:999px; cursor:pointer; margin-bottom:14px; font-weight:600;}
+  .wtitle{font-size:24px; font-weight:800; margin-bottom:4px;}
+  .wsub{color:var(--muted); font-size:14px; margin-bottom:6px;}
+  .warning{background:#3a2030; border-left:4px solid var(--danger); border-radius:10px;
+    padding:10px 12px; font-size:13px; color:#ffd9e0; margin:10px 0 16px;}
+
+  .ex{background:var(--card); border-radius:14px; padding:14px; margin-bottom:10px;
+    display:flex; align-items:center; gap:12px; cursor:pointer; border:1px solid transparent;}
+  .ex.done{border-color:var(--accent2); background:#16281f;}
+  .ex .check{width:28px; height:28px; border-radius:999px; border:2px solid var(--muted);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px;}
+  .ex.done .check{background:var(--accent2); border-color:var(--accent2); color:#04120d;}
+  .ex-info{flex:1;}
+  .ex-info b{display:block; font-size:15px; margin-bottom:2px;}
+  .ex-info small{color:var(--muted); font-size:13px;}
+  .ex.done .ex-info b{text-decoration:line-through; opacity:.7;}
+  .ex-xp{color:var(--gold); font-size:13px; font-weight:700;}
+
+  .finish{
+    position:fixed; bottom:0; left:0; right:0; padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    background:linear-gradient(transparent, var(--bg) 30%);
+  }
+  .finish button{
+    width:100%; max-width:488px; margin:0 auto; display:block;
+    background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#fff; border:none;
+    font-size:17px; font-weight:800; padding:16px; border-radius:16px; cursor:pointer;
+    opacity:.4; pointer-events:none; transition:opacity .3s;
+  }
+  .finish button.ready{opacity:1; pointer-events:auto;}
+
+  /* Celebration overlay */
+  .overlay{position:fixed; inset:0; background:rgba(10,12,25,.92); display:none;
+    align-items:center; justify-content:center; z-index:50; text-align:center; padding:24px;}
+  .overlay.show{display:flex;}
+  .celebr{animation:pop .5s ease;}
+  @keyframes pop{0%{transform:scale(.5); opacity:0;} 100%{transform:scale(1); opacity:1;}}
+  .celebr .big{font-size:72px;}
+  .celebr h3{font-size:26px; margin:10px 0 6px;}
+  .celebr p{color:var(--muted); margin-bottom:6px; font-size:15px;}
+  .celebr .gain{color:var(--gold); font-size:22px; font-weight:800; margin:10px 0;}
+  .celebr .lvlup{color:var(--accent2); font-weight:800; font-size:18px; margin-bottom:10px;}
+  .celebr button{background:var(--accent); color:#fff; border:none; padding:14px 40px;
+    border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; margin-top:14px;}
+
+  /* Achievements */
+  .ach{display:flex; gap:10px; overflow-x:auto; padding-bottom:6px;}
+  .ach::-webkit-scrollbar{display:none;}
+  .badge{min-width:110px; background:var(--card); border-radius:14px; padding:12px; text-align:center;}
+  .badge .bi{font-size:28px; filter:grayscale(1); opacity:.35;}
+  .badge.won .bi{filter:none; opacity:1;}
+  .badge b{display:block; font-size:12px; margin-top:6px;}
+  .badge small{color:var(--muted); font-size:10px;}
+
+  /* History */
+  .hist{background:var(--card); border-radius:14px; padding:4px 14px;}
+  .hrow{display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #262c4a; font-size:14px;}
+  .hrow:last-child{border-bottom:none;}
+  .hrow small{color:var(--muted);}
+  .empty{color:var(--muted); font-size:14px; text-align:center; padding:16px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ HOME ============ -->
+  <div class="screen active" id="home">
+    <header>
+      <div class="logo">Gym<span>Quest</span> 💪</div>
+      <div class="streak" id="streakBox">🔥 0</div>
+    </header>
+
+    <div class="level-card">
+      <div class="level-row">
+        <div class="level-title" id="lvlTitle">Уровень 1</div>
+        <div class="level-xp" id="lvlXp">0 / 100 XP</div>
+      </div>
+      <div class="bar"><div class="bar-fill" id="lvlBar" style="width:0%"></div></div>
+      <div class="stats-row">
+        <div class="stat"><b id="stTotal">0</b><small>тренировок</small></div>
+        <div class="stat"><b id="stWeek">0</b><small>за 7 дней</small></div>
+        <div class="stat"><b id="stXp">0</b><small>всего XP</small></div>
+      </div>
+    </div>
+
+    <h2>Тренировки</h2>
+    <div id="workoutList"></div>
+
+    <h2>Достижения</h2>
+    <div class="ach" id="achList"></div>
+
+    <h2>История</h2>
+    <div class="hist" id="histList"></div>
+  </div>
+
+  <!-- ============ WORKOUT ============ -->
+  <div class="screen" id="workout">
+    <button class="back" onclick="goHome()">← Назад</button>
+    <div class="wtitle" id="wTitle"></div>
+    <div class="wsub" id="wSub"></div>
+    <div class="warning" id="wWarn" style="display:none"></div>
+    <div id="exList"></div>
+    <div style="height:70px"></div>
+    <div class="finish"><button id="finishBtn" onclick="finishWorkout()">Завершить тренировку 🏆</button></div>
+  </div>
+
+</div>
+
+<!-- Celebration -->
+<div class="overlay" id="overlay">
+  <div class="celebr">
+    <div class="big" id="cEmoji">🏆</div>
+    <h3 id="cTitle">Тренировка завершена!</h3>
+    <p id="cSub"></p>
+    <div class="gain" id="cXp"></div>
+    <div class="lvlup" id="cLvl" style="display:none"></div>
+    <button onclick="closeCelebration()">Отлично!</button>
+  </div>
+</div>
+
+<script>
+// ================= DATA =================
+const WORKOUTS = [
+  {
+    id: "pilates",
+    icon: "🧘",
+    title: "Функциональный пилатес",
+    sub: "Со своим весом · ~30 мин",
+    exercises: [
+      {n:"Разминка: кошка-корова", d:"2 мин, плавно", xp:5},
+      {n:"Мёртвый жук (dead bug)", d:"3 подхода × 10 на сторону", xp:10},
+      {n:"Ягодичный мост", d:"3 × 15", xp:10},
+      {n:"Птица-собака (bird dog)", d:"3 × 10 на сторону", xp:10},
+      {n:"Планка", d:"3 × 30–45 сек", xp:10},
+      {n:"Боковая планка", d:"2 × 20–30 сек на сторону", xp:10},
+      {n:"Ролл-ап (медленный подъём)", d:"2 × 8", xp:10},
+      {n:"Растяжка", d:"5 мин", xp:5},
+    ]
+  },
+  {
+    id: "dumbbells",
+    icon: "🏋️",
+    title: "Гантели: всё тело",
+    sub: "Простая база · ~40 мин",
+    exercises: [
+      {n:"Разминка: суставная", d:"5 мин", xp:5},
+      {n:"Гоблет-присед с гантелью", d:"3 × 10–12", xp:12},
+      {n:"Тяга гантели в наклоне", d:"3 × 10 на руку", xp:12},
+      {n:"Жим гантелей сидя (плечи)", d:"3 × 10", xp:12},
+      {n:"Румынская тяга с гантелями", d:"3 × 10", xp:12},
+      {n:"Подъём на бицепс", d:"3 × 12", xp:10},
+      {n:"Разгибание на трицепс из-за головы", d:"3 × 12", xp:10},
+      {n:"Заминка: растяжка", d:"5 мин", xp:5},
+    ]
+  },
+  {
+    id: "knee",
+    icon: "🦵",
+    title: "Восстановление колена",
+    sub: "После разрыва мениска · ~25 мин",
+    warn: "⚠️ Без боли! Все упражнения — в комфортной амплитуде. Программу согласуйте с врачом или физиотерапевтом. При боли или отёке — стоп.",
+    exercises: [
+      {n:"Разогрев: велотренажёр лёгкий", d:"5–8 мин, без сопротивления", xp:8},
+      {n:"Подъём прямой ноги лёжа", d:"3 × 12 на ногу", xp:10},
+      {n:"Ягодичный мост", d:"3 × 12", xp:10},
+      {n:"Ракушка (clamshell) с резинкой", d:"3 × 15 на сторону", xp:10},
+      {n:"Разгибание колена сидя (terminal knee extension)", d:"3 × 15", xp:10},
+      {n:"Подъём на носки стоя", d:"3 × 15", xp:8},
+      {n:"Неглубокий присед у стены (до 45°)", d:"3 × 20–30 сек", xp:10},
+      {n:"Сгибание ноги лёжа (пятка к ягодице)", d:"3 × 12", xp:8},
+    ]
+  },
+  {
+    id: "chest",
+    icon: "🔩",
+    title: "Грудь и жим лёжа",
+    sub: "Штанга + гантели · ~45 мин",
+    exercises: [
+      {n:"Разминка: плечи + пустой гриф", d:"2 × 12 с грифом", xp:5},
+      {n:"Жим штанги лёжа", d:"4 × 6–8, рабочий вес", xp:15},
+      {n:"Жим гантелей на наклонной скамье", d:"3 × 10", xp:12},
+      {n:"Разводка гантелей лёжа", d:"3 × 12", xp:10},
+      {n:"Отжимания на брусьях (или от пола)", d:"3 × максимум", xp:12},
+      {n:"Пуловер с гантелью", d:"3 × 12", xp:10},
+      {n:"Растяжка груди и плеч", d:"5 мин", xp:5},
+    ]
+  },
+];
+
+const ACHIEVEMENTS = [
+  {id:"first",   icon:"🌟", name:"Первый шаг",   desc:"1 тренировка",      test:s=>s.total>=1},
+  {id:"five",    icon:"🎯", name:"В ритме",      desc:"5 тренировок",      test:s=>s.total>=5},
+  {id:"twenty",  icon:"🏅", name:"Атлет",        desc:"20 тренировок",     test:s=>s.total>=20},
+  {id:"fifty",   icon:"👑", name:"Машина",       desc:"50 тренировок",     test:s=>s.total>=50},
+  {id:"streak3", icon:"🔥", name:"Серия 3",      desc:"3 дня подряд",      test:s=>s.bestStreak>=3},
+  {id:"streak7", icon:"⚡", name:"Неделя огня",  desc:"7 дней подряд",     test:s=>s.bestStreak>=7},
+  {id:"lvl5",    icon:"🚀", name:"Уровень 5",    desc:"Достигнут 5 ур.",   test:s=>levelFromXp(s.xp).lvl>=5},
+  {id:"lvl10",   icon:"💎", name:"Уровень 10",   desc:"Достигнут 10 ур.",  test:s=>levelFromXp(s.xp).lvl>=10},
+  {id:"allTypes",icon:"🌈", name:"Универсал",    desc:"Все 4 тренировки",  test:s=>WORKOUTS.every(w=>(s.counts[w.id]||0)>0)},
+  {id:"knee10",  icon:"🦵", name:"Реабилитация", desc:"10 трен. колена",   test:s=>(s.counts.knee||0)>=10},
+];
+
+// ================= STATE =================
+const KEY = "gymquest-v1";
+let state = load();
+function load(){
+  try{
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if(s && typeof s === "object") return Object.assign(defaults(), s);
+  }catch(e){}
+  return defaults();
+}
+function defaults(){
+  return {xp:0, total:0, counts:{}, history:[], streak:0, bestStreak:0, lastDay:null, achievements:[]};
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+function levelFromXp(xp){
+  // level n requires 100 * n XP to advance (cumulative)
+  let lvl = 1, need = 100, rem = xp;
+  while(rem >= need){ rem -= need; lvl++; need = 100 * lvl; }
+  return {lvl, rem, need};
+}
+function today(){ return new Date().toISOString().slice(0,10); }
+function daysBetween(a, b){ return Math.round((new Date(b) - new Date(a)) / 86400000); }
+
+// ================= RENDER HOME =================
+function renderHome(){
+  const {lvl, rem, need} = levelFromXp(state.xp);
+  document.getElementById("lvlTitle").textContent = "Уровень " + lvl;
+  document.getElementById("lvlXp").textContent = rem + " / " + need + " XP";
+  document.getElementById("lvlBar").style.width = Math.min(100, rem/need*100) + "%";
+  document.getElementById("stTotal").textContent = state.total;
+  document.getElementById("stXp").textContent = state.xp;
+  document.getElementById("streakBox").textContent = "🔥 " + currentStreak();
+
+  const weekAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+  document.getElementById("stWeek").textContent = state.history.filter(h => h.date >= weekAgo).length;
+
+  const list = document.getElementById("workoutList");
+  list.innerHTML = "";
+  WORKOUTS.forEach(w => {
+    const totalXp = w.exercises.reduce((a,e)=>a+e.xp,0) + 20;
+    const cnt = state.counts[w.id] || 0;
+    const el = document.createElement("div");
+    el.className = "wcard";
+    el.innerHTML = `
+      <div class="wicon">${w.icon}</div>
+      <div class="winfo"><b>${w.title}</b><small>${w.sub}</small>
+        ${cnt ? `<div class="wdone">✓ выполнено ${cnt} раз</div>` : ""}</div>
+      <div class="wxp">+${totalXp} XP</div>`;
+    el.onclick = () => openWorkout(w.id);
+    list.appendChild(el);
+  });
+
+  // achievements
+  const ach = document.getElementById("achList");
+  ach.innerHTML = "";
+  ACHIEVEMENTS.forEach(a => {
+    const won = state.achievements.includes(a.id);
+    ach.innerHTML += `<div class="badge ${won?"won":""}">
+      <div class="bi">${a.icon}</div><b>${a.name}</b><small>${a.desc}</small></div>`;
+  });
+
+  // history
+  const hist = document.getElementById("histList");
+  if(!state.history.length){
+    hist.innerHTML = `<div class="empty">Пока пусто. Начни первую тренировку! 💪</div>`;
+  } else {
+    hist.innerHTML = state.history.slice(-10).reverse().map(h => {
+      const w = WORKOUTS.find(x=>x.id===h.id);
+      return `<div class="hrow"><span>${w?w.icon+" "+w.title:h.id}</span>
+        <span><b style="color:var(--gold)">+${h.xp}</b> <small>${h.date}</small></span></div>`;
+    }).join("");
+  }
+}
+
+function currentStreak(){
+  if(!state.lastDay) return 0;
+  const gap = daysBetween(state.lastDay, today());
+  return gap <= 1 ? state.streak : 0;
+}
+
+// ================= WORKOUT SCREEN =================
+let activeWorkout = null;
+let doneSet = new Set();
+
+function openWorkout(id){
+  activeWorkout = WORKOUTS.find(w=>w.id===id);
+  doneSet = new Set();
+  document.getElementById("wTitle").textContent = activeWorkout.icon + " " + activeWorkout.title;
+  document.getElementById("wSub").textContent = activeWorkout.sub;
+  const warn = document.getElementById("wWarn");
+  if(activeWorkout.warn){ warn.textContent = activeWorkout.warn; warn.style.display = "block"; }
+  else warn.style.display = "none";
+
+  const list = document.getElementById("exList");
+  list.innerHTML = "";
+  activeWorkout.exercises.forEach((e,i) => {
+    const el = document.createElement("div");
+    el.className = "ex";
+    el.innerHTML = `<div class="check"></div>
+      <div class="ex-info"><b>${e.n}</b><small>${e.d}</small></div>
+      <div class="ex-xp">+${e.xp}</div>`;
+    el.onclick = () => toggleEx(i, el);
+    list.appendChild(el);
+  });
+  updateFinishBtn();
+  showScreen("workout");
+  window.scrollTo(0,0);
+}
+
+function toggleEx(i, el){
+  if(doneSet.has(i)){ doneSet.delete(i); el.classList.remove("done"); el.querySelector(".check").textContent=""; }
+  else{ doneSet.add(i); el.classList.add("done"); el.querySelector(".check").textContent="✓";
+    if(navigator.vibrate) navigator.vibrate(30); }
+  updateFinishBtn();
+}
+function updateFinishBtn(){
+  const btn = document.getElementById("finishBtn");
+  const n = doneSet.size, total = activeWorkout.exercises.length;
+  btn.textContent = n === 0 ? "Отметь упражнения ✓" : `Завершить (${n}/${total}) 🏆`;
+  btn.classList.toggle("ready", n > 0);
+}
+
+function finishWorkout(){
+  if(!doneSet.size) return;
+  const all = doneSet.size === activeWorkout.exercises.length;
+  let xp = activeWorkout.exercises.reduce((a,e,i)=> doneSet.has(i) ? a+e.xp : a, 0);
+  if(all) xp += 20; // bonus for full workout
+
+  const prevLvl = levelFromXp(state.xp).lvl;
+
+  // streak
+  const t = today();
+  if(state.lastDay !== t){
+    const gap = state.lastDay ? daysBetween(state.lastDay, t) : 999;
+    state.streak = gap === 1 ? state.streak + 1 : 1;
+    state.bestStreak = Math.max(state.bestStreak, state.streak);
+    state.lastDay = t;
+  }
+
+  state.xp += xp;
+  state.total += 1;
+  state.counts[activeWorkout.id] = (state.counts[activeWorkout.id]||0) + 1;
+  state.history.push({id:activeWorkout.id, date:t, xp});
+  if(state.history.length > 200) state.history = state.history.slice(-200);
+
+  // achievements
+  const newAch = [];
+  ACHIEVEMENTS.forEach(a => {
+    if(!state.achievements.includes(a.id) && a.test(state)){
+      state.achievements.push(a.id); newAch.push(a);
+    }
+  });
+  save();
+
+  // celebration
+  const newLvl = levelFromXp(state.xp).lvl;
+  document.getElementById("cEmoji").textContent = all ? "🏆" : "💪";
+  document.getElementById("cTitle").textContent = all ? "Идеально! Всё выполнено!" : "Тренировка завершена!";
+  document.getElementById("cSub").textContent = newAch.length
+    ? "Новое достижение: " + newAch.map(a=>a.icon+" "+a.name).join(", ")
+    : "Серия: 🔥 " + state.streak + " дн.";
+  document.getElementById("cXp").textContent = "+" + xp + " XP";
+  const lvlEl = document.getElementById("cLvl");
+  if(newLvl > prevLvl){ lvlEl.textContent = "🚀 Новый уровень: " + newLvl + "!"; lvlEl.style.display = "block"; }
+  else lvlEl.style.display = "none";
+  document.getElementById("overlay").classList.add("show");
+  if(navigator.vibrate) navigator.vibrate([50,50,100]);
+}
+
+function closeCelebration(){
+  document.getElementById("overlay").classList.remove("show");
+  goHome();
+}
+
+// ================= NAV =================
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+function goHome(){ renderHome(); showScreen("home"); window.scrollTo(0,0); }
+
+// ================= INIT =================
+renderHome();
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+</script>
+</body>
+</html>
