@@ -41,17 +41,20 @@
   /* Workout cards */
   .wcard{
     background:var(--card); border-radius:var(--radius); padding:16px; margin-bottom:12px;
-    display:flex; align-items:center; gap:14px; cursor:pointer; border:1px solid transparent;
+    display:flex; align-items:center; gap:12px; cursor:pointer; border:1px solid transparent;
     transition:transform .1s;
   }
   .wcard:active{transform:scale(.98);}
-  .wicon{font-size:32px; width:56px; height:56px; display:flex; align-items:center; justify-content:center;
+  .wicon{font-size:30px; width:54px; height:54px; display:flex; align-items:center; justify-content:center;
     background:var(--card2); border-radius:14px; flex-shrink:0;}
   .winfo{flex:1; min-width:0;}
   .winfo b{font-size:16px; display:block; margin-bottom:3px;}
   .winfo small{color:var(--muted); font-size:13px;}
   .wxp{color:var(--gold); font-weight:800; font-size:14px; white-space:nowrap;}
   .wdone{font-size:12px; color:var(--accent2); font-weight:700;}
+  .wedit{background:var(--card2); border:none; color:var(--muted); font-size:16px; width:38px; height:38px;
+    border-radius:10px; cursor:pointer; flex-shrink:0;}
+  .wcard.new{justify-content:center; color:var(--muted); font-weight:700; border:2px dashed #323a63; background:transparent;}
 
   /* Workout screen */
   .screen{display:none;}
@@ -62,6 +65,10 @@
   .wsub{color:var(--muted); font-size:14px; margin-bottom:6px;}
   .warning{background:#3a2030; border-left:4px solid var(--danger); border-radius:10px;
     padding:10px 12px; font-size:13px; color:#ffd9e0; margin:10px 0 16px;}
+  .rest-info{color:var(--muted); font-size:13px; margin-bottom:12px;}
+
+  .startflow{width:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#fff; border:none;
+    font-size:17px; font-weight:800; padding:16px; border-radius:16px; cursor:pointer; margin-bottom:16px;}
 
   .ex{background:var(--card); border-radius:14px; padding:14px; margin-bottom:10px;
     display:flex; align-items:center; gap:12px; cursor:pointer; border:1px solid transparent;}
@@ -86,6 +93,60 @@
     opacity:.4; pointer-events:none; transition:opacity .3s;
   }
   .finish button.ready{opacity:1; pointer-events:auto;}
+
+  /* ===== Flow mode ===== */
+  #flow{text-align:center;}
+  .flow-progress{display:flex; gap:4px; margin:4px 0 20px;}
+  .flow-progress i{flex:1; height:5px; border-radius:99px; background:#262c4a;}
+  .flow-progress i.past{background:var(--accent2);}
+  .flow-progress i.cur{background:var(--accent);}
+  .flow-label{color:var(--muted); font-size:13px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px;}
+  .flow-ex{font-size:26px; font-weight:800; margin-bottom:6px;}
+  .flow-detail{color:var(--muted); font-size:16px; margin-bottom:14px;}
+  .flow-sets{display:flex; gap:8px; justify-content:center; margin-bottom:26px;}
+  .flow-sets i{width:14px; height:14px; border-radius:99px; background:#262c4a;}
+  .flow-sets i.done{background:var(--accent2);}
+  .flow-sets i.cur{background:var(--accent); box-shadow:0 0 0 4px rgba(124,92,255,.25);}
+  .flow-timer{font-size:88px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1; margin:10px 0 6px;}
+  .flow-timer.resting{color:var(--accent2);}
+  .flow-next{color:var(--muted); font-size:15px; margin-bottom:24px;}
+  .flow-next b{color:var(--text);}
+  .bigbtn{width:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#fff; border:none;
+    font-size:19px; font-weight:800; padding:20px; border-radius:18px; cursor:pointer; margin-bottom:10px;}
+  .rowbtns{display:flex; gap:10px;}
+  .rowbtns button{flex:1; background:var(--card); color:var(--text); border:none; font-size:15px;
+    font-weight:700; padding:14px; border-radius:14px; cursor:pointer;}
+  .flow-exit{margin-top:18px; background:none; border:none; color:var(--muted); font-size:14px; cursor:pointer; text-decoration:underline;}
+
+  /* ===== Editor ===== */
+  .field{margin-bottom:14px; text-align:left;}
+  .field label{display:block; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
+  .field input, .field textarea{width:100%; background:var(--card); border:1px solid #2b3357; color:var(--text);
+    font-size:15px; padding:12px; border-radius:12px; font-family:inherit;}
+  .field textarea{resize:vertical; min-height:60px;}
+  .field input:focus, .field textarea:focus{outline:none; border-color:var(--accent);}
+  .field-row{display:flex; gap:10px;}
+  .field-row .field{flex:1;}
+  .exed{background:var(--card); border-radius:14px; padding:12px; margin-bottom:10px;}
+  .exed-top{display:flex; gap:8px; margin-bottom:8px;}
+  .exed-top input{flex:1; background:#12152a; border:1px solid #2b3357; color:var(--text); font-size:14px;
+    padding:10px; border-radius:10px;}
+  .exed-row{display:flex; gap:8px; align-items:center;}
+  .exed-row input{background:#12152a; border:1px solid #2b3357; color:var(--text); font-size:14px;
+    padding:10px; border-radius:10px; min-width:0;}
+  .exed-row .grow{flex:1;}
+  .exed-row .num{width:64px; text-align:center;}
+  .exed-row label{font-size:11px; color:var(--muted);}
+  .exed-btns{display:flex; gap:6px; margin-top:8px; justify-content:flex-end;}
+  .exed-btns button{background:#12152a; border:none; color:var(--muted); width:36px; height:32px;
+    border-radius:8px; cursor:pointer; font-size:14px;}
+  .exed-btns .del{color:var(--danger);}
+  .addex{width:100%; background:transparent; border:2px dashed #323a63; color:var(--muted); font-size:15px;
+    font-weight:700; padding:14px; border-radius:14px; cursor:pointer; margin-bottom:16px;}
+  .save-btn{width:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#fff; border:none;
+    font-size:17px; font-weight:800; padding:16px; border-radius:16px; cursor:pointer; margin-bottom:10px;}
+  .del-workout{width:100%; background:transparent; border:1px solid var(--danger); color:var(--danger);
+    font-size:15px; font-weight:700; padding:13px; border-radius:14px; cursor:pointer;}
 
   /* Celebration overlay */
   .overlay{position:fixed; inset:0; background:rgba(10,12,25,.92); display:none;
@@ -151,15 +212,75 @@
     <div class="hist" id="histList"></div>
   </div>
 
-  <!-- ============ WORKOUT ============ -->
+  <!-- ============ WORKOUT OVERVIEW ============ -->
   <div class="screen" id="workout">
     <button class="back" onclick="goHome()">← Назад</button>
     <div class="wtitle" id="wTitle"></div>
     <div class="wsub" id="wSub"></div>
     <div class="warning" id="wWarn" style="display:none"></div>
+    <div class="rest-info" id="wRest"></div>
+    <button class="startflow" onclick="startFlow()">▶ Начать тренировку (с таймером)</button>
     <div id="exList"></div>
     <div style="height:70px"></div>
     <div class="finish"><button id="finishBtn" onclick="finishWorkout()">Завершить тренировку 🏆</button></div>
+  </div>
+
+  <!-- ============ FLOW MODE ============ -->
+  <div class="screen" id="flow">
+    <div class="flow-progress" id="fProgress"></div>
+    <div class="flow-label" id="fLabel">Упражнение 1 из 8</div>
+    <div class="flow-ex" id="fEx"></div>
+    <div class="flow-detail" id="fDetail"></div>
+    <div class="flow-sets" id="fSets"></div>
+    <div class="flow-timer" id="fTimer" style="display:none">0:45</div>
+    <div class="flow-next" id="fNext" style="display:none"></div>
+    <button class="bigbtn" id="fMainBtn" onclick="flowMainAction()">Подход выполнен ✓</button>
+    <div class="rowbtns" id="fRestBtns" style="display:none">
+      <button onclick="restAdd(15)">+15 сек</button>
+      <button onclick="restSkip()">Пропустить ⏭</button>
+    </div>
+    <button class="flow-exit" onclick="exitFlow()">Выйти из режима тренировки</button>
+  </div>
+
+  <!-- ============ EDITOR ============ -->
+  <div class="screen" id="editor">
+    <button class="back" onclick="goHome()">← Отмена</button>
+    <div class="wtitle" id="edTitle">Новая тренировка</div>
+    <div style="height:10px"></div>
+    <div class="field-row">
+      <div class="field" style="flex:0 0 90px">
+        <label>Иконка</label>
+        <input id="edIcon" maxlength="4" placeholder="💪" style="text-align:center; font-size:22px">
+      </div>
+      <div class="field">
+        <label>Название</label>
+        <input id="edName" placeholder="Например: Спина и бицепс">
+      </div>
+    </div>
+    <div class="field">
+      <label>Описание</label>
+      <input id="edSub" placeholder="Например: Гантели + турник · ~40 мин">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Отдых между подходами, сек</label>
+        <input id="edRestSet" type="number" min="0" max="600" value="60">
+      </div>
+      <div class="field">
+        <label>Отдых между упражнениями, сек</label>
+        <input id="edRestBlock" type="number" min="0" max="600" value="90">
+      </div>
+    </div>
+    <div class="field">
+      <label>Предупреждение (необязательно)</label>
+      <textarea id="edWarn" placeholder="Например: без боли, согласовать с врачом"></textarea>
+    </div>
+    <h2>Упражнения</h2>
+    <div id="edExList"></div>
+    <button class="addex" onclick="edAddExercise()">＋ Добавить упражнение</button>
+    <button class="save-btn" onclick="edSave()">Сохранить тренировку</button>
+    <button class="del-workout" id="edDelete" onclick="edDelete()" style="display:none">Удалить тренировку</button>
+    <div style="height:30px"></div>
   </div>
 
 </div>
@@ -177,73 +298,67 @@
 </div>
 
 <script>
-// ================= DATA =================
-const WORKOUTS = [
+// ================= DEFAULT DATA =================
+// Каждое упражнение: n = название, d = детали (повторения), sets = подходы, xp = очки за упражнение
+const DEFAULT_WORKOUTS = [
   {
-    id: "pilates",
-    icon: "🧘",
-    title: "Функциональный пилатес",
-    sub: "Со своим весом · ~30 мин",
+    id: "pilates", icon: "🧘", title: "Функциональный пилатес",
+    sub: "Со своим весом · ~30 мин", restSet: 30, restBlock: 60,
     exercises: [
-      {n:"Разминка: кошка-корова", d:"2 мин, плавно", xp:5},
-      {n:"Мёртвый жук (dead bug)", d:"3 подхода × 10 на сторону", xp:10},
-      {n:"Ягодичный мост", d:"3 × 15", xp:10},
-      {n:"Птица-собака (bird dog)", d:"3 × 10 на сторону", xp:10},
-      {n:"Планка", d:"3 × 30–45 сек", xp:10},
-      {n:"Боковая планка", d:"2 × 20–30 сек на сторону", xp:10},
-      {n:"Ролл-ап (медленный подъём)", d:"2 × 8", xp:10},
-      {n:"Растяжка", d:"5 мин", xp:5},
+      {n:"Разминка: кошка-корова", d:"2 мин, плавно", sets:1, xp:5},
+      {n:"Мёртвый жук (dead bug)", d:"10 на сторону", sets:3, xp:10},
+      {n:"Ягодичный мост", d:"15 повторений", sets:3, xp:10},
+      {n:"Птица-собака (bird dog)", d:"10 на сторону", sets:3, xp:10},
+      {n:"Планка", d:"30–45 сек", sets:3, xp:10},
+      {n:"Боковая планка", d:"20–30 сек на сторону", sets:2, xp:10},
+      {n:"Ролл-ап (медленный подъём)", d:"8 повторений", sets:2, xp:10},
+      {n:"Растяжка", d:"5 мин", sets:1, xp:5},
     ]
   },
   {
-    id: "dumbbells",
-    icon: "🏋️",
-    title: "Гантели: всё тело",
-    sub: "Простая база · ~40 мин",
+    id: "dumbbells", icon: "🏋️", title: "Гантели: всё тело",
+    sub: "Простая база · ~40 мин", restSet: 60, restBlock: 90,
     exercises: [
-      {n:"Разминка: суставная", d:"5 мин", xp:5},
-      {n:"Гоблет-присед с гантелью", d:"3 × 10–12", xp:12},
-      {n:"Тяга гантели в наклоне", d:"3 × 10 на руку", xp:12},
-      {n:"Жим гантелей сидя (плечи)", d:"3 × 10", xp:12},
-      {n:"Румынская тяга с гантелями", d:"3 × 10", xp:12},
-      {n:"Подъём на бицепс", d:"3 × 12", xp:10},
-      {n:"Разгибание на трицепс из-за головы", d:"3 × 12", xp:10},
-      {n:"Заминка: растяжка", d:"5 мин", xp:5},
+      {n:"Разминка: суставная", d:"5 мин", sets:1, xp:5},
+      {n:"Гоблет-присед с гантелью", d:"10–12 повторений", sets:3, xp:12},
+      {n:"Тяга гантели в наклоне", d:"10 на руку", sets:3, xp:12},
+      {n:"Жим гантелей сидя (плечи)", d:"10 повторений", sets:3, xp:12},
+      {n:"Румынская тяга с гантелями", d:"10 повторений", sets:3, xp:12},
+      {n:"Подъём на бицепс", d:"12 повторений", sets:3, xp:10},
+      {n:"Разгибание на трицепс из-за головы", d:"12 повторений", sets:3, xp:10},
+      {n:"Заминка: растяжка", d:"5 мин", sets:1, xp:5},
     ]
   },
   {
-    id: "knee",
-    icon: "🦵",
-    title: "Восстановление колена",
-    sub: "После разрыва мениска · ~25 мин",
+    id: "knee", icon: "🦵", title: "Восстановление колена",
+    sub: "После разрыва мениска · ~25 мин", restSet: 45, restBlock: 60,
     warn: "⚠️ Без боли! Все упражнения — в комфортной амплитуде. Программу согласуйте с врачом или физиотерапевтом. При боли или отёке — стоп.",
     exercises: [
-      {n:"Разогрев: велотренажёр лёгкий", d:"5–8 мин, без сопротивления", xp:8},
-      {n:"Подъём прямой ноги лёжа", d:"3 × 12 на ногу", xp:10},
-      {n:"Ягодичный мост", d:"3 × 12", xp:10},
-      {n:"Ракушка (clamshell) с резинкой", d:"3 × 15 на сторону", xp:10},
-      {n:"Разгибание колена сидя (terminal knee extension)", d:"3 × 15", xp:10},
-      {n:"Подъём на носки стоя", d:"3 × 15", xp:8},
-      {n:"Неглубокий присед у стены (до 45°)", d:"3 × 20–30 сек", xp:10},
-      {n:"Сгибание ноги лёжа (пятка к ягодице)", d:"3 × 12", xp:8},
+      {n:"Разогрев: велотренажёр лёгкий", d:"5–8 мин, без сопротивления", sets:1, xp:8},
+      {n:"Подъём прямой ноги лёжа", d:"12 на ногу", sets:3, xp:10},
+      {n:"Ягодичный мост", d:"12 повторений", sets:3, xp:10},
+      {n:"Ракушка (clamshell) с резинкой", d:"15 на сторону", sets:3, xp:10},
+      {n:"Разгибание колена сидя (TKE)", d:"15 повторений", sets:3, xp:10},
+      {n:"Подъём на носки стоя", d:"15 повторений", sets:3, xp:8},
+      {n:"Неглубокий присед у стены (до 45°)", d:"20–30 сек", sets:3, xp:10},
+      {n:"Сгибание ноги лёжа", d:"12 повторений", sets:3, xp:8},
     ]
   },
   {
-    id: "chest",
-    icon: "🔩",
-    title: "Грудь и жим лёжа",
-    sub: "Штанга + гантели · ~45 мин",
+    id: "chest", icon: "🔩", title: "Грудь и жим лёжа",
+    sub: "Штанга + гантели · ~45 мин", restSet: 90, restBlock: 120,
     exercises: [
-      {n:"Разминка: плечи + пустой гриф", d:"2 × 12 с грифом", xp:5},
-      {n:"Жим штанги лёжа", d:"4 × 6–8, рабочий вес", xp:15},
-      {n:"Жим гантелей на наклонной скамье", d:"3 × 10", xp:12},
-      {n:"Разводка гантелей лёжа", d:"3 × 12", xp:10},
-      {n:"Отжимания на брусьях (или от пола)", d:"3 × максимум", xp:12},
-      {n:"Пуловер с гантелью", d:"3 × 12", xp:10},
-      {n:"Растяжка груди и плеч", d:"5 мин", xp:5},
+      {n:"Разминка: плечи + пустой гриф", d:"12 с грифом", sets:2, xp:5},
+      {n:"Жим штанги лёжа", d:"6–8, рабочий вес", sets:4, xp:15},
+      {n:"Жим гантелей на наклонной скамье", d:"10 повторений", sets:3, xp:12},
+      {n:"Разводка гантелей лёжа", d:"12 повторений", sets:3, xp:10},
+      {n:"Отжимания на брусьях (или от пола)", d:"максимум", sets:3, xp:12},
+      {n:"Пуловер с гантелью", d:"12 повторений", sets:3, xp:10},
+      {n:"Растяжка груди и плеч", d:"5 мин", sets:1, xp:5},
     ]
   },
 ];
+const BASE_IDS = ["pilates","dumbbells","knee","chest"];
 
 const ACHIEVEMENTS = [
   {id:"first",   icon:"🌟", name:"Первый шаг",   desc:"1 тренировка",      test:s=>s.total>=1},
@@ -254,33 +369,78 @@ const ACHIEVEMENTS = [
   {id:"streak7", icon:"⚡", name:"Неделя огня",  desc:"7 дней подряд",     test:s=>s.bestStreak>=7},
   {id:"lvl5",    icon:"🚀", name:"Уровень 5",    desc:"Достигнут 5 ур.",   test:s=>levelFromXp(s.xp).lvl>=5},
   {id:"lvl10",   icon:"💎", name:"Уровень 10",   desc:"Достигнут 10 ур.",  test:s=>levelFromXp(s.xp).lvl>=10},
-  {id:"allTypes",icon:"🌈", name:"Универсал",    desc:"Все 4 тренировки",  test:s=>WORKOUTS.every(w=>(s.counts[w.id]||0)>0)},
+  {id:"allTypes",icon:"🌈", name:"Универсал",    desc:"Все 4 базовые",     test:s=>BASE_IDS.every(id=>(s.counts[id]||0)>0)},
   {id:"knee10",  icon:"🦵", name:"Реабилитация", desc:"10 трен. колена",   test:s=>(s.counts.knee||0)>=10},
+  {id:"maker",   icon:"🛠️", name:"Конструктор",  desc:"Своя тренировка",   test:s=>s.workouts.some(w=>w.custom)},
 ];
 
 // ================= STATE =================
 const KEY = "gymquest-v1";
 let state = load();
 function load(){
-  try{
-    const s = JSON.parse(localStorage.getItem(KEY));
-    if(s && typeof s === "object") return Object.assign(defaults(), s);
-  }catch(e){}
-  return defaults();
+  let s = null;
+  try{ s = JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  const st = Object.assign(defaults(), (s && typeof s === "object") ? s : {});
+  if(!Array.isArray(st.workouts) || !st.workouts.length){
+    st.workouts = JSON.parse(JSON.stringify(DEFAULT_WORKOUTS));
+  }
+  // миграция со старого формата (упражнения без sets)
+  st.workouts.forEach(w => {
+    if(w.restSet == null) w.restSet = 60;
+    if(w.restBlock == null) w.restBlock = 90;
+    w.exercises.forEach(e => { if(e.sets == null) e.sets = 3; });
+  });
+  return st;
 }
 function defaults(){
-  return {xp:0, total:0, counts:{}, history:[], streak:0, bestStreak:0, lastDay:null, achievements:[]};
+  return {xp:0, total:0, counts:{}, history:[], streak:0, bestStreak:0, lastDay:null,
+    achievements:[], workouts:JSON.parse(JSON.stringify(DEFAULT_WORKOUTS))};
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
 
 function levelFromXp(xp){
-  // level n requires 100 * n XP to advance (cumulative)
   let lvl = 1, need = 100, rem = xp;
   while(rem >= need){ rem -= need; lvl++; need = 100 * lvl; }
   return {lvl, rem, need};
 }
 function today(){ return new Date().toISOString().slice(0,10); }
 function daysBetween(a, b){ return Math.round((new Date(b) - new Date(a)) / 86400000); }
+function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmtTime(sec){ return Math.floor(sec/60) + ":" + String(sec%60).padStart(2,"0"); }
+
+// ================= AUDIO (сигнал в наушники) =================
+let audioCtx = null;
+function ensureAudio(){
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === "suspended") audioCtx.resume();
+  }catch(e){}
+}
+function beep(freq, dur, delay, vol){
+  if(!audioCtx) return;
+  try{
+    const t = audioCtx.currentTime + (delay || 0);
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.4, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }catch(e){}
+}
+function soundTick(){ beep(660, 0.1); }                                  // 3..2..1
+function soundGo(){ beep(880, 0.15); beep(1175, 0.3, 0.18); }            // конец отдыха
+function soundDone(){ beep(784, 0.12); beep(988, 0.12, 0.14); beep(1319, 0.35, 0.28); } // финиш
+
+// ================= WAKE LOCK (не гасить экран) =================
+let wakeLock = null;
+async function keepAwake(){
+  try{ if("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); }catch(e){}
+}
+function releaseAwake(){ try{ if(wakeLock){ wakeLock.release(); wakeLock = null; } }catch(e){} }
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible" && flowState) keepAwake();
+});
 
 // ================= RENDER HOME =================
 function renderHome(){
@@ -297,21 +457,27 @@ function renderHome(){
 
   const list = document.getElementById("workoutList");
   list.innerHTML = "";
-  WORKOUTS.forEach(w => {
+  state.workouts.forEach(w => {
     const totalXp = w.exercises.reduce((a,e)=>a+e.xp,0) + 20;
     const cnt = state.counts[w.id] || 0;
     const el = document.createElement("div");
     el.className = "wcard";
     el.innerHTML = `
-      <div class="wicon">${w.icon}</div>
-      <div class="winfo"><b>${w.title}</b><small>${w.sub}</small>
+      <div class="wicon">${esc(w.icon)}</div>
+      <div class="winfo"><b>${esc(w.title)}</b><small>${esc(w.sub)}</small>
         ${cnt ? `<div class="wdone">✓ выполнено ${cnt} раз</div>` : ""}</div>
-      <div class="wxp">+${totalXp} XP</div>`;
+      <div class="wxp">+${totalXp} XP</div>
+      <button class="wedit" title="Редактировать">✎</button>`;
     el.onclick = () => openWorkout(w.id);
+    el.querySelector(".wedit").onclick = (ev) => { ev.stopPropagation(); openEditor(w.id); };
     list.appendChild(el);
   });
+  const add = document.createElement("div");
+  add.className = "wcard new";
+  add.textContent = "＋ Создать свою тренировку";
+  add.onclick = () => openEditor(null);
+  list.appendChild(add);
 
-  // achievements
   const ach = document.getElementById("achList");
   ach.innerHTML = "";
   ACHIEVEMENTS.forEach(a => {
@@ -320,14 +486,13 @@ function renderHome(){
       <div class="bi">${a.icon}</div><b>${a.name}</b><small>${a.desc}</small></div>`;
   });
 
-  // history
   const hist = document.getElementById("histList");
   if(!state.history.length){
     hist.innerHTML = `<div class="empty">Пока пусто. Начни первую тренировку! 💪</div>`;
   } else {
     hist.innerHTML = state.history.slice(-10).reverse().map(h => {
-      const w = WORKOUTS.find(x=>x.id===h.id);
-      return `<div class="hrow"><span>${w?w.icon+" "+w.title:h.id}</span>
+      const w = state.workouts.find(x=>x.id===h.id);
+      return `<div class="hrow"><span>${w?esc(w.icon)+" "+esc(w.title):esc(h.title||h.id)}</span>
         <span><b style="color:var(--gold)">+${h.xp}</b> <small>${h.date}</small></span></div>`;
     }).join("");
   }
@@ -339,33 +504,39 @@ function currentStreak(){
   return gap <= 1 ? state.streak : 0;
 }
 
-// ================= WORKOUT SCREEN =================
+// ================= WORKOUT OVERVIEW =================
 let activeWorkout = null;
 let doneSet = new Set();
 
 function openWorkout(id){
-  activeWorkout = WORKOUTS.find(w=>w.id===id);
+  activeWorkout = state.workouts.find(w=>w.id===id);
+  if(!activeWorkout) return;
   doneSet = new Set();
   document.getElementById("wTitle").textContent = activeWorkout.icon + " " + activeWorkout.title;
   document.getElementById("wSub").textContent = activeWorkout.sub;
+  document.getElementById("wRest").textContent =
+    "⏱ Отдых: " + activeWorkout.restSet + " сек между подходами · " + activeWorkout.restBlock + " сек между упражнениями";
   const warn = document.getElementById("wWarn");
   if(activeWorkout.warn){ warn.textContent = activeWorkout.warn; warn.style.display = "block"; }
   else warn.style.display = "none";
+  renderExList();
+  updateFinishBtn();
+  showScreen("workout");
+  window.scrollTo(0,0);
+}
 
+function renderExList(){
   const list = document.getElementById("exList");
   list.innerHTML = "";
   activeWorkout.exercises.forEach((e,i) => {
     const el = document.createElement("div");
-    el.className = "ex";
-    el.innerHTML = `<div class="check"></div>
-      <div class="ex-info"><b>${e.n}</b><small>${e.d}</small></div>
+    el.className = "ex" + (doneSet.has(i) ? " done" : "");
+    el.innerHTML = `<div class="check">${doneSet.has(i)?"✓":""}</div>
+      <div class="ex-info"><b>${esc(e.n)}</b><small>${e.sets} × ${esc(e.d)}</small></div>
       <div class="ex-xp">+${e.xp}</div>`;
     el.onclick = () => toggleEx(i, el);
     list.appendChild(el);
   });
-  updateFinishBtn();
-  showScreen("workout");
-  window.scrollTo(0,0);
 }
 
 function toggleEx(i, el){
@@ -381,15 +552,160 @@ function updateFinishBtn(){
   btn.classList.toggle("ready", n > 0);
 }
 
+// ================= FLOW MODE (таймер) =================
+// flowState: {exIdx, setIdx, phase: "work"|"rest", restLeft, restType, timerId, endTime}
+let flowState = null;
+
+function startFlow(){
+  ensureAudio();
+  keepAwake();
+  doneSet = new Set();
+  flowState = {exIdx: 0, setIdx: 0, phase: "work", timerId: null};
+  renderFlow();
+  showScreen("flow");
+  window.scrollTo(0,0);
+}
+
+function renderFlow(){
+  const w = activeWorkout, f = flowState;
+  const ex = w.exercises[f.exIdx];
+
+  const prog = document.getElementById("fProgress");
+  prog.innerHTML = w.exercises.map((_,i) =>
+    `<i class="${i < f.exIdx ? "past" : i === f.exIdx ? "cur" : ""}"></i>`).join("");
+
+  document.getElementById("fLabel").textContent = "Упражнение " + (f.exIdx+1) + " из " + w.exercises.length;
+  document.getElementById("fEx").textContent = ex.n;
+  document.getElementById("fDetail").textContent = ex.d;
+
+  const setsEl = document.getElementById("fSets");
+  setsEl.innerHTML = Array.from({length: ex.sets}, (_,i) =>
+    `<i class="${i < f.setIdx ? "done" : (i === f.setIdx && f.phase === "work") ? "cur" : ""}"></i>`).join("");
+
+  const timer = document.getElementById("fTimer");
+  const nextEl = document.getElementById("fNext");
+  const mainBtn = document.getElementById("fMainBtn");
+  const restBtns = document.getElementById("fRestBtns");
+
+  if(f.phase === "work"){
+    timer.style.display = "none";
+    nextEl.style.display = "none";
+    mainBtn.style.display = "block";
+    restBtns.style.display = "none";
+    const lastSet = f.setIdx === ex.sets - 1;
+    const lastEx = f.exIdx === w.exercises.length - 1;
+    mainBtn.textContent = ex.sets === 1
+      ? "Выполнено ✓"
+      : `Подход ${f.setIdx+1} выполнен ✓` + (lastSet && lastEx ? " 🏁" : "");
+  } else {
+    timer.style.display = "block";
+    timer.classList.add("resting");
+    timer.textContent = fmtTime(f.restLeft);
+    nextEl.style.display = "block";
+    const nx = nextLabel();
+    nextEl.innerHTML = (f.restType === "block" ? "Отдых между упражнениями · дальше: " : "Отдых · дальше: ") + "<b>" + esc(nx) + "</b>";
+    mainBtn.style.display = "none";
+    restBtns.style.display = "flex";
+  }
+}
+
+function nextLabel(){
+  const w = activeWorkout, f = flowState;
+  const ex = w.exercises[f.exIdx];
+  if(f.restType === "set") return ex.n + " — подход " + (f.setIdx+1) + " из " + ex.sets;
+  return ex.n;
+}
+
+function flowMainAction(){
+  ensureAudio();
+  const w = activeWorkout, f = flowState;
+  const ex = w.exercises[f.exIdx];
+  if(navigator.vibrate) navigator.vibrate(30);
+
+  const lastSet = f.setIdx === ex.sets - 1;
+  if(lastSet){
+    doneSet.add(f.exIdx);
+    const lastEx = f.exIdx === w.exercises.length - 1;
+    if(lastEx){ stopRestTimer(); soundDone(); finishWorkout(); return; }
+    f.exIdx++; f.setIdx = 0;
+    startRest(w.restBlock, "block");
+  } else {
+    f.setIdx++;
+    startRest(w.restSet, "set");
+  }
+}
+
+function startRest(seconds, type){
+  const f = flowState;
+  if(seconds <= 0){ f.phase = "work"; renderFlow(); return; }
+  f.phase = "rest"; f.restType = type; f.restLeft = seconds;
+  f.endTime = Date.now() + seconds * 1000;
+  renderFlow();
+  stopRestTimer();
+  f.timerId = setInterval(tickRest, 250);
+}
+
+function tickRest(){
+  const f = flowState;
+  if(!f || f.phase !== "rest") return;
+  const left = Math.max(0, Math.ceil((f.endTime - Date.now()) / 1000));
+  if(left !== f.restLeft){
+    f.restLeft = left;
+    document.getElementById("fTimer").textContent = fmtTime(left);
+    if(left > 0 && left <= 3) soundTick();
+    if(left === 0){
+      stopRestTimer();
+      soundGo();
+      if(navigator.vibrate) navigator.vibrate([80,60,80]);
+      f.phase = "work";
+      renderFlow();
+    }
+  }
+}
+
+function restAdd(sec){
+  const f = flowState;
+  if(f && f.phase === "rest"){ f.endTime += sec * 1000; tickRestNow(); }
+}
+function tickRestNow(){
+  const f = flowState;
+  f.restLeft = Math.max(0, Math.ceil((f.endTime - Date.now()) / 1000));
+  document.getElementById("fTimer").textContent = fmtTime(f.restLeft);
+}
+function restSkip(){
+  const f = flowState;
+  if(f && f.phase === "rest"){
+    stopRestTimer();
+    f.phase = "work";
+    renderFlow();
+  }
+}
+function stopRestTimer(){
+  if(flowState && flowState.timerId){ clearInterval(flowState.timerId); flowState.timerId = null; }
+}
+
+function exitFlow(){
+  stopRestTimer();
+  flowState = null;
+  releaseAwake();
+  // возвращаемся к списку: выполненные упражнения уже отмечены
+  renderExList();
+  updateFinishBtn();
+  showScreen("workout");
+  window.scrollTo(0,0);
+}
+
+// ================= FINISH =================
 function finishWorkout(){
   if(!doneSet.size) return;
+  stopRestTimer(); flowState = null; releaseAwake();
+
   const all = doneSet.size === activeWorkout.exercises.length;
   let xp = activeWorkout.exercises.reduce((a,e,i)=> doneSet.has(i) ? a+e.xp : a, 0);
-  if(all) xp += 20; // bonus for full workout
+  if(all) xp += 20;
 
   const prevLvl = levelFromXp(state.xp).lvl;
 
-  // streak
   const t = today();
   if(state.lastDay !== t){
     const gap = state.lastDay ? daysBetween(state.lastDay, t) : 999;
@@ -401,10 +717,9 @@ function finishWorkout(){
   state.xp += xp;
   state.total += 1;
   state.counts[activeWorkout.id] = (state.counts[activeWorkout.id]||0) + 1;
-  state.history.push({id:activeWorkout.id, date:t, xp});
+  state.history.push({id:activeWorkout.id, title:activeWorkout.title, date:t, xp});
   if(state.history.length > 200) state.history = state.history.slice(-200);
 
-  // achievements
   const newAch = [];
   ACHIEVEMENTS.forEach(a => {
     if(!state.achievements.includes(a.id) && a.test(state)){
@@ -413,7 +728,6 @@ function finishWorkout(){
   });
   save();
 
-  // celebration
   const newLvl = levelFromXp(state.xp).lvl;
   document.getElementById("cEmoji").textContent = all ? "🏆" : "💪";
   document.getElementById("cTitle").textContent = all ? "Идеально! Всё выполнено!" : "Тренировка завершена!";
@@ -433,12 +747,110 @@ function closeCelebration(){
   goHome();
 }
 
+// ================= EDITOR =================
+let editingId = null;   // null = новая тренировка
+let edExercises = [];   // рабочая копия упражнений
+
+function openEditor(id){
+  editingId = id;
+  const w = id ? state.workouts.find(x=>x.id===id) : null;
+  document.getElementById("edTitle").textContent = w ? "Редактирование" : "Новая тренировка";
+  document.getElementById("edIcon").value = w ? w.icon : "💪";
+  document.getElementById("edName").value = w ? w.title : "";
+  document.getElementById("edSub").value = w ? w.sub : "";
+  document.getElementById("edRestSet").value = w ? w.restSet : 60;
+  document.getElementById("edRestBlock").value = w ? w.restBlock : 90;
+  document.getElementById("edWarn").value = (w && w.warn) ? w.warn : "";
+  edExercises = w ? JSON.parse(JSON.stringify(w.exercises)) : [{n:"", d:"", sets:3, xp:10}];
+  document.getElementById("edDelete").style.display = w ? "block" : "none";
+  renderEdExercises();
+  showScreen("editor");
+  window.scrollTo(0,0);
+}
+
+function renderEdExercises(){
+  const list = document.getElementById("edExList");
+  list.innerHTML = "";
+  edExercises.forEach((e,i) => {
+    const el = document.createElement("div");
+    el.className = "exed";
+    el.innerHTML = `
+      <div class="exed-top">
+        <input placeholder="Название упражнения" value="${esc(e.n)}" data-f="n">
+      </div>
+      <div class="exed-row">
+        <input class="grow" placeholder="Повторения (напр. 10–12)" value="${esc(e.d)}" data-f="d">
+        <label>подх.</label><input class="num" type="number" min="1" max="20" value="${e.sets}" data-f="sets">
+        <label>XP</label><input class="num" type="number" min="1" max="99" value="${e.xp}" data-f="xp">
+      </div>
+      <div class="exed-btns">
+        <button title="Вверх" ${i===0?"disabled":""}>↑</button>
+        <button title="Вниз" ${i===edExercises.length-1?"disabled":""}>↓</button>
+        <button class="del" title="Удалить">✕</button>
+      </div>`;
+    el.querySelectorAll("input").forEach(inp => {
+      inp.oninput = () => {
+        const f = inp.dataset.f;
+        edExercises[i][f] = (f === "sets" || f === "xp") ? Math.max(1, parseInt(inp.value)||1) : inp.value;
+      };
+    });
+    const [up, down, del] = el.querySelectorAll(".exed-btns button");
+    up.onclick = () => { [edExercises[i-1], edExercises[i]] = [edExercises[i], edExercises[i-1]]; renderEdExercises(); };
+    down.onclick = () => { [edExercises[i+1], edExercises[i]] = [edExercises[i], edExercises[i+1]]; renderEdExercises(); };
+    del.onclick = () => { edExercises.splice(i,1); renderEdExercises(); };
+    list.appendChild(el);
+  });
+}
+
+function edAddExercise(){
+  edExercises.push({n:"", d:"", sets:3, xp:10});
+  renderEdExercises();
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+function edSave(){
+  const title = document.getElementById("edName").value.trim();
+  const exs = edExercises.filter(e => e.n.trim());
+  if(!title){ alert("Дай тренировке название"); return; }
+  if(!exs.length){ alert("Добавь хотя бы одно упражнение"); return; }
+  const data = {
+    icon: document.getElementById("edIcon").value.trim() || "💪",
+    title,
+    sub: document.getElementById("edSub").value.trim() || exs.length + " упражнений",
+    restSet: Math.max(0, parseInt(document.getElementById("edRestSet").value) || 60),
+    restBlock: Math.max(0, parseInt(document.getElementById("edRestBlock").value) || 90),
+    exercises: exs,
+  };
+  const warn = document.getElementById("edWarn").value.trim();
+  if(warn) data.warn = warn;
+
+  if(editingId){
+    const w = state.workouts.find(x=>x.id===editingId);
+    Object.assign(w, data);
+    if(!w.warn && !warn) delete w.warn;
+  } else {
+    data.id = "custom-" + Date.now();
+    data.custom = true;
+    state.workouts.push(data);
+  }
+  save();
+  goHome();
+}
+
+function edDelete(){
+  if(!editingId) return;
+  if(!confirm("Удалить эту тренировку? Историю и XP это не затронет.")) return;
+  state.workouts = state.workouts.filter(w => w.id !== editingId);
+  save();
+  goHome();
+}
+
 // ================= NAV =================
 function showScreen(id){
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
 }
-function goHome(){ renderHome(); showScreen("home"); window.scrollTo(0,0); }
+function goHome(){ stopRestTimer(); flowState = null; releaseAwake(); renderHome(); showScreen("home"); window.scrollTo(0,0); }
 
 // ================= INIT =================
 renderHome();
