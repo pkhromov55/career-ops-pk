@@ -120,9 +120,16 @@
   .flow-sets i.done{background:var(--accent2);}
   .flow-sets i.cur{background:var(--accent); box-shadow:0 0 0 4px rgba(124,92,255,.25);}
   .flow-timer{font-size:88px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1; margin:10px 0 6px;}
-  .flow-timer.resting{color:var(--accent2);}
-  .flow-next{color:var(--muted); font-size:15px; margin-bottom:24px;}
+  .flow-timer.prep{color:var(--gold);}
+  .flow-timer.rest{color:var(--accent2);}
+  .flow-phase{display:inline-block; padding:6px 18px; border-radius:999px; font-weight:800;
+    letter-spacing:.08em; font-size:13px; text-transform:uppercase; margin-bottom:12px;}
+  .flow-phase.p-prep{background:#3a3313; color:var(--gold);}
+  .flow-phase.p-work{background:#2a2160; color:#cabdff;}
+  .flow-phase.p-rest{background:#0e2f28; color:var(--accent2);}
+  .flow-next{color:var(--muted); font-size:15px; margin-bottom:6px;}
   .flow-next b{color:var(--text);}
+  .flow-total{color:var(--muted); font-size:13px; margin-bottom:20px;}
   .bigbtn{width:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#fff; border:none;
     font-size:19px; font-weight:800; padding:20px; border-radius:18px; cursor:pointer; margin-bottom:10px;}
   .rowbtns{display:flex; gap:10px;}
@@ -147,7 +154,7 @@
   .exed-row input{background:#12152a; border:1px solid #2b3357; color:var(--text); font-size:14px;
     padding:10px; border-radius:10px; min-width:0;}
   .exed-row .grow{flex:1;}
-  .exed-row .num{width:64px; text-align:center;}
+  .exed-row .num{width:56px; text-align:center;}
   .exed-row label{font-size:11px; color:var(--muted);}
   .exed-btns{display:flex; gap:6px; margin-top:8px; justify-content:flex-end;}
   .exed-btns button{background:#12152a; border:none; color:var(--muted); width:36px; height:32px;
@@ -241,16 +248,18 @@
   <div class="screen" id="flow">
     <div class="flow-progress" id="fProgress"></div>
     <div class="flow-label" id="fLabel">Упражнение 1 из 8</div>
+    <div><span class="flow-phase p-prep" id="fPhase">Приготовься</span></div>
     <div class="flow-ex" id="fEx"></div>
     <div class="flow-detail" id="fDetail"></div>
     <button class="flow-help" onclick="flowHelp()">ℹ️ Как делать</button>
     <div class="flow-sets" id="fSets"></div>
-    <div class="flow-timer" id="fTimer" style="display:none">0:45</div>
-    <div class="flow-next" id="fNext" style="display:none"></div>
-    <button class="bigbtn" id="fMainBtn" onclick="flowMainAction()">Подход выполнен ✓</button>
-    <div class="rowbtns" id="fRestBtns" style="display:none">
-      <button onclick="restAdd(15)">+15 сек</button>
-      <button onclick="restSkip()">Пропустить ⏭</button>
+    <div class="flow-timer" id="fTimer">0:00</div>
+    <div class="flow-next" id="fNext"></div>
+    <div class="flow-total" id="fTotal"></div>
+    <button class="bigbtn" id="fMainBtn" onclick="segSkip()">Подход выполнен ✓</button>
+    <div class="rowbtns">
+      <button id="fPause" onclick="togglePause()">⏸ Пауза</button>
+      <button onclick="segAdd(15)">+15 сек</button>
     </div>
     <button class="flow-exit" onclick="exitFlow()">Выйти из режима тренировки</button>
   </div>
@@ -450,11 +459,21 @@ function load(){
   if(!Array.isArray(st.workouts) || !st.workouts.length){
     st.workouts = JSON.parse(JSON.stringify(DEFAULT_WORKOUTS));
   }
-  // миграция со старого формата (упражнения без sets)
+  // миграция со старого формата (упражнения без sets/dur)
   st.workouts.forEach(w => {
     if(w.restSet == null) w.restSet = 60;
     if(w.restBlock == null) w.restBlock = 90;
-    w.exercises.forEach(e => { if(e.sets == null) e.sets = 3; });
+    w.exercises.forEach(e => {
+      if(e.sets == null) e.sets = 3;
+      if(e.dur == null){
+        // пробуем вытащить длительность из описания («5 мин», «30–45 сек»), иначе 40 сек на подход
+        const m = /(\d+)(?:\s*[–-]\s*(\d+))?\s*мин/.exec(e.d || "");
+        const s = /(\d+)(?:\s*[–-]\s*(\d+))?\s*сек/.exec(e.d || "");
+        if(m) e.dur = parseInt(m[2] || m[1]) * 60;
+        else if(s) e.dur = parseInt(s[2] || s[1]);
+        else e.dur = 40;
+      }
+    });
   });
   return st;
 }
@@ -495,7 +514,9 @@ function beep(freq, dur, delay, vol){
   }catch(e){}
 }
 function soundTick(){ beep(660, 0.1); }                                  // 3..2..1
-function soundGo(){ beep(880, 0.15); beep(1175, 0.3, 0.18); }            // конец отдыха
+function soundGo(){ beep(880, 0.15); beep(1175, 0.3, 0.18); }            // старт работы
+function soundPrep(){ beep(523, 0.12); beep(659, 0.2, 0.15); }           // приготовься
+function soundRest(){ beep(988, 0.12); beep(659, 0.28, 0.15); }          // начало отдыха
 function soundDone(){ beep(784, 0.12); beep(988, 0.12, 0.14); beep(1319, 0.35, 0.28); } // финиш
 
 // ================= WAKE LOCK (не гасить экран) =================
@@ -581,7 +602,7 @@ function openWorkout(id){
   document.getElementById("wTitle").textContent = activeWorkout.icon + " " + activeWorkout.title;
   document.getElementById("wSub").textContent = activeWorkout.sub;
   document.getElementById("wRest").textContent =
-    "⏱ Отдых: " + activeWorkout.restSet + " сек между подходами · " + activeWorkout.restBlock + " сек между упражнениями";
+    "⏱ Отдых: " + activeWorkout.restSet + " сек между подходами · " + activeWorkout.restBlock + " сек между упражнениями · 10 сек на подготовку";
   const warn = document.getElementById("wWarn");
   if(activeWorkout.warn){ warn.textContent = activeWorkout.warn; warn.style.display = "block"; }
   else warn.style.display = "none";
@@ -598,7 +619,7 @@ function renderExList(){
     const el = document.createElement("div");
     el.className = "ex" + (doneSet.has(i) ? " done" : "");
     el.innerHTML = `<div class="check">${doneSet.has(i)?"✓":""}</div>
-      <div class="ex-info"><b>${esc(e.n)}</b><small>${e.sets} × ${esc(e.d)}</small></div>
+      <div class="ex-info"><b>${esc(e.n)}</b><small>${e.sets} × ${esc(e.d)} · ⏱ ${e.dur || 40} сек</small></div>
       <div class="ex-xp">+${e.xp}</div>
       <button class="ex-help" title="Как делать">?</button>`;
     el.onclick = () => toggleEx(i, el);
@@ -620,134 +641,155 @@ function updateFinishBtn(){
   btn.classList.toggle("ready", n > 0);
 }
 
-// ================= FLOW MODE (таймер) =================
-// flowState: {exIdx, setIdx, phase: "work"|"rest", restLeft, restType, timerId, endTime}
-let flowState = null;
+// ================= FLOW MODE (единый ход тренировки) =================
+// Тренировка — цепочка сегментов: prep (10 сек «приготовься») → work (время подхода) → rest → prep → ...
+const PREP_SEC = 10;
+let flowState = null; // {segs, idx, remaining, endTime, timerId, paused}
+
+function buildSegments(w){
+  const segs = [];
+  w.exercises.forEach((ex, ei) => {
+    for(let s = 0; s < ex.sets; s++){
+      segs.push({type:"prep", dur:PREP_SEC, ei, si:s});
+      segs.push({type:"work", dur: ex.dur || 40, ei, si:s});
+      const lastSet = s === ex.sets - 1;
+      const lastEx = ei === w.exercises.length - 1;
+      if(!(lastSet && lastEx)){
+        const rd = lastSet ? w.restBlock : w.restSet;
+        if(rd > 0) segs.push({type:"rest", dur:rd, ei: lastSet ? ei + 1 : ei, si: lastSet ? 0 : s + 1});
+      }
+    }
+  });
+  return segs;
+}
 
 function startFlow(){
   ensureAudio();
   keepAwake();
   doneSet = new Set();
-  flowState = {exIdx: 0, setIdx: 0, phase: "work", timerId: null};
-  renderFlow();
+  flowState = {segs: buildSegments(activeWorkout), idx: 0, remaining: 0, timerId: null, paused: false};
   showScreen("flow");
   window.scrollTo(0,0);
+  startSegment();
 }
+
+function startSegment(){
+  const f = flowState, seg = f.segs[f.idx];
+  f.remaining = seg.dur;
+  f.endTime = Date.now() + seg.dur * 1000;
+  f.paused = false;
+  const pauseBtn = document.getElementById("fPause");
+  if(pauseBtn) pauseBtn.textContent = "⏸ Пауза";
+  if(seg.type === "work"){ soundGo(); if(navigator.vibrate) navigator.vibrate([80,60,80]); }
+  else if(seg.type === "rest"){ soundRest(); if(navigator.vibrate) navigator.vibrate(40); }
+  else { soundPrep(); if(navigator.vibrate) navigator.vibrate(40); }
+  stopRestTimer();
+  f.timerId = setInterval(tickSeg, 250);
+  renderFlow();
+}
+
+function tickSeg(){
+  const f = flowState;
+  if(!f || f.paused) return;
+  const left = Math.max(0, Math.ceil((f.endTime - Date.now()) / 1000));
+  if(left !== f.remaining){
+    f.remaining = left;
+    updateTimers();
+    if(left > 0 && left <= 3) soundTick();
+    if(left === 0) completeSegment();
+  }
+}
+
+function completeSegment(){
+  const f = flowState, seg = f.segs[f.idx];
+  if(seg.type === "work" && seg.si === activeWorkout.exercises[seg.ei].sets - 1){
+    doneSet.add(seg.ei);
+  }
+  f.idx++;
+  if(f.idx >= f.segs.length){
+    stopRestTimer();
+    soundDone();
+    finishWorkout();
+    return;
+  }
+  startSegment();
+}
+
+function segSkip(){ ensureAudio(); if(flowState) completeSegment(); }
+
+function segAdd(sec){
+  const f = flowState;
+  if(!f) return;
+  f.endTime += sec * 1000;
+  f.remaining = f.paused ? f.remaining + sec : Math.max(0, Math.ceil((f.endTime - Date.now()) / 1000));
+  updateTimers();
+}
+
+function togglePause(){
+  const f = flowState;
+  if(!f) return;
+  f.paused = !f.paused;
+  if(!f.paused) f.endTime = Date.now() + f.remaining * 1000;
+  document.getElementById("fPause").textContent = f.paused ? "▶ Продолжить" : "⏸ Пауза";
+}
+
+function totalRemaining(){
+  const f = flowState;
+  let t = f.remaining;
+  for(let i = f.idx + 1; i < f.segs.length; i++) t += f.segs[i].dur;
+  return t;
+}
+
+function updateTimers(){
+  const f = flowState;
+  if(!f) return;
+  document.getElementById("fTimer").textContent = fmtTime(f.remaining);
+  document.getElementById("fTotal").textContent = "До конца тренировки ~" + fmtTime(totalRemaining());
+}
+
+const PHASE_META = {
+  prep: {label:"Приготовься", cls:"p-prep", tcls:"prep"},
+  work: {label:"Работа",      cls:"p-work", tcls:"work"},
+  rest: {label:"Отдых",       cls:"p-rest", tcls:"rest"},
+};
 
 function renderFlow(){
-  const w = activeWorkout, f = flowState;
-  const ex = w.exercises[f.exIdx];
+  const w = activeWorkout, f = flowState, seg = f.segs[f.idx];
+  const ex = w.exercises[seg.ei];
+  const meta = PHASE_META[seg.type];
 
-  const prog = document.getElementById("fProgress");
-  prog.innerHTML = w.exercises.map((_,i) =>
-    `<i class="${i < f.exIdx ? "past" : i === f.exIdx ? "cur" : ""}"></i>`).join("");
+  document.getElementById("fProgress").innerHTML = w.exercises.map((_,i) =>
+    `<i class="${i < seg.ei ? "past" : i === seg.ei ? "cur" : ""}"></i>`).join("");
+  document.getElementById("fLabel").textContent =
+    "Упражнение " + (seg.ei+1) + " из " + w.exercises.length + " · подход " + (seg.si+1) + " из " + ex.sets;
 
-  document.getElementById("fLabel").textContent = "Упражнение " + (f.exIdx+1) + " из " + w.exercises.length;
+  const ph = document.getElementById("fPhase");
+  ph.textContent = meta.label;
+  ph.className = "flow-phase " + meta.cls;
+
   document.getElementById("fEx").textContent = ex.n;
-  document.getElementById("fDetail").textContent = ex.d;
+  document.getElementById("fDetail").textContent = ex.d + " · " + (ex.dur || 40) + " сек";
+  document.getElementById("fSets").innerHTML = Array.from({length: ex.sets}, (_,i) =>
+    `<i class="${i < seg.si ? "done" : i === seg.si ? "cur" : ""}"></i>`).join("");
+  document.getElementById("fTimer").className = "flow-timer " + meta.tcls;
 
-  const setsEl = document.getElementById("fSets");
-  setsEl.innerHTML = Array.from({length: ex.sets}, (_,i) =>
-    `<i class="${i < f.setIdx ? "done" : (i === f.setIdx && f.phase === "work") ? "cur" : ""}"></i>`).join("");
-
-  const timer = document.getElementById("fTimer");
-  const nextEl = document.getElementById("fNext");
-  const mainBtn = document.getElementById("fMainBtn");
-  const restBtns = document.getElementById("fRestBtns");
-
-  if(f.phase === "work"){
-    timer.style.display = "none";
-    nextEl.style.display = "none";
-    mainBtn.style.display = "block";
-    restBtns.style.display = "none";
-    const lastSet = f.setIdx === ex.sets - 1;
-    const lastEx = f.exIdx === w.exercises.length - 1;
-    mainBtn.textContent = ex.sets === 1
-      ? "Выполнено ✓"
-      : `Подход ${f.setIdx+1} выполнен ✓` + (lastSet && lastEx ? " 🏁" : "");
-  } else {
-    timer.style.display = "block";
-    timer.classList.add("resting");
-    timer.textContent = fmtTime(f.restLeft);
-    nextEl.style.display = "block";
-    const nx = nextLabel();
-    nextEl.innerHTML = (f.restType === "block" ? "Отдых между упражнениями · дальше: " : "Отдых · дальше: ") + "<b>" + esc(nx) + "</b>";
-    mainBtn.style.display = "none";
-    restBtns.style.display = "flex";
+  const nxt = f.segs[f.idx + 1];
+  let nextTxt = "дальше: финиш 🏁";
+  if(nxt){
+    const nex = w.exercises[nxt.ei];
+    if(nxt.type === "rest") nextTxt = "дальше: отдых " + nxt.dur + " сек";
+    else if(nxt.type === "prep") nextTxt = "дальше: подготовка " + nxt.dur + " сек, затем " + nex.n + " — подход " + (nxt.si+1);
+    else nextTxt = "дальше: " + nex.n + " — подход " + (nxt.si+1) + " из " + nex.sets;
   }
+  document.getElementById("fNext").textContent = nextTxt;
+
+  const btn = document.getElementById("fMainBtn");
+  btn.textContent = seg.type === "work" ? "Подход выполнен ✓"
+    : seg.type === "rest" ? "Пропустить отдых ⏭"
+    : "Начать подход сейчас ⏭";
+  updateTimers();
 }
 
-function nextLabel(){
-  const w = activeWorkout, f = flowState;
-  const ex = w.exercises[f.exIdx];
-  if(f.restType === "set") return ex.n + " — подход " + (f.setIdx+1) + " из " + ex.sets;
-  return ex.n;
-}
-
-function flowMainAction(){
-  ensureAudio();
-  const w = activeWorkout, f = flowState;
-  const ex = w.exercises[f.exIdx];
-  if(navigator.vibrate) navigator.vibrate(30);
-
-  const lastSet = f.setIdx === ex.sets - 1;
-  if(lastSet){
-    doneSet.add(f.exIdx);
-    const lastEx = f.exIdx === w.exercises.length - 1;
-    if(lastEx){ stopRestTimer(); soundDone(); finishWorkout(); return; }
-    f.exIdx++; f.setIdx = 0;
-    startRest(w.restBlock, "block");
-  } else {
-    f.setIdx++;
-    startRest(w.restSet, "set");
-  }
-}
-
-function startRest(seconds, type){
-  const f = flowState;
-  if(seconds <= 0){ f.phase = "work"; renderFlow(); return; }
-  f.phase = "rest"; f.restType = type; f.restLeft = seconds;
-  f.endTime = Date.now() + seconds * 1000;
-  renderFlow();
-  stopRestTimer();
-  f.timerId = setInterval(tickRest, 250);
-}
-
-function tickRest(){
-  const f = flowState;
-  if(!f || f.phase !== "rest") return;
-  const left = Math.max(0, Math.ceil((f.endTime - Date.now()) / 1000));
-  if(left !== f.restLeft){
-    f.restLeft = left;
-    document.getElementById("fTimer").textContent = fmtTime(left);
-    if(left > 0 && left <= 3) soundTick();
-    if(left === 0){
-      stopRestTimer();
-      soundGo();
-      if(navigator.vibrate) navigator.vibrate([80,60,80]);
-      f.phase = "work";
-      renderFlow();
-    }
-  }
-}
-
-function restAdd(sec){
-  const f = flowState;
-  if(f && f.phase === "rest"){ f.endTime += sec * 1000; tickRestNow(); }
-}
-function tickRestNow(){
-  const f = flowState;
-  f.restLeft = Math.max(0, Math.ceil((f.endTime - Date.now()) / 1000));
-  document.getElementById("fTimer").textContent = fmtTime(f.restLeft);
-}
-function restSkip(){
-  const f = flowState;
-  if(f && f.phase === "rest"){
-    stopRestTimer();
-    f.phase = "work";
-    renderFlow();
-  }
-}
 function stopRestTimer(){
   if(flowState && flowState.timerId){ clearInterval(flowState.timerId); flowState.timerId = null; }
 }
@@ -829,7 +871,7 @@ function openEditor(id){
   document.getElementById("edRestSet").value = w ? w.restSet : 60;
   document.getElementById("edRestBlock").value = w ? w.restBlock : 90;
   document.getElementById("edWarn").value = (w && w.warn) ? w.warn : "";
-  edExercises = w ? JSON.parse(JSON.stringify(w.exercises)) : [{n:"", d:"", sets:3, xp:10}];
+  edExercises = w ? JSON.parse(JSON.stringify(w.exercises)) : [{n:"", d:"", sets:3, dur:40, xp:10}];
   document.getElementById("edDelete").style.display = w ? "block" : "none";
   renderEdExercises();
   showScreen("editor");
@@ -849,6 +891,7 @@ function renderEdExercises(){
       <div class="exed-row">
         <input class="grow" placeholder="Повторения (напр. 10–12)" value="${esc(e.d)}" data-f="d">
         <label>подх.</label><input class="num" type="number" min="1" max="20" value="${e.sets}" data-f="sets">
+        <label>сек</label><input class="num" type="number" min="5" max="1800" value="${e.dur || 40}" data-f="dur">
         <label>XP</label><input class="num" type="number" min="1" max="99" value="${e.xp}" data-f="xp">
       </div>
       <textarea class="exed-help" placeholder="Как делать (справка) — необязательно" data-f="help">${esc(e.help || "")}</textarea>
@@ -860,7 +903,7 @@ function renderEdExercises(){
     el.querySelectorAll("input, textarea").forEach(inp => {
       inp.oninput = () => {
         const f = inp.dataset.f;
-        edExercises[i][f] = (f === "sets" || f === "xp") ? Math.max(1, parseInt(inp.value)||1) : inp.value;
+        edExercises[i][f] = (f === "sets" || f === "xp" || f === "dur") ? Math.max(1, parseInt(inp.value)||1) : inp.value;
       };
     });
     const [up, down, del] = el.querySelectorAll(".exed-btns button");
@@ -872,7 +915,7 @@ function renderEdExercises(){
 }
 
 function edAddExercise(){
-  edExercises.push({n:"", d:"", sets:3, xp:10});
+  edExercises.push({n:"", d:"", sets:3, dur:40, xp:10});
   renderEdExercises();
   window.scrollTo(0, document.body.scrollHeight);
 }
