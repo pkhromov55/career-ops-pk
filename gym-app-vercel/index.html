@@ -450,7 +450,7 @@ function showHelp(e){
   document.getElementById("helpOverlay").classList.add("show");
 }
 function closeHelp(){ document.getElementById("helpOverlay").classList.remove("show"); }
-function flowHelp(){ if(activeWorkout && flowState) showHelp(activeWorkout.exercises[flowState.exIdx]); }
+function flowHelp(){ if(activeWorkout && flowState) showHelp(activeWorkout.exercises[flowState.segs[flowState.idx].ei]); }
 
 // ================= STATE =================
 const KEY = "gymquest-v1";
