@@ -263,6 +263,7 @@
     <div class="rowbtns">
       <button id="fPause" onclick="togglePause()">⏸ Пауза</button>
       <button onclick="segAdd(15)">+15 сек</button>
+      <button onclick="skipExercise()" title="XP за упражнение — пропорционально выполненным подходам">⏭ Упражн.</button>
     </div>
     <button class="flow-exit" onclick="exitFlow()">Выйти из режима тренировки</button>
   </div>
@@ -650,12 +651,14 @@ function currentStreak(){
 
 // ================= WORKOUT OVERVIEW =================
 let activeWorkout = null;
-let doneSet = new Set();
+let doneSet = new Set();  // индексы полностью выполненных упражнений (для галочек)
+let setsDone = {};        // индекс упражнения -> сколько подходов выполнено (для XP)
 
 function openWorkout(id){
   activeWorkout = state.workouts.find(w=>w.id===id);
   if(!activeWorkout) return;
   doneSet = new Set();
+  setsDone = {};
   document.getElementById("wTitle").textContent = activeWorkout.icon + " " + activeWorkout.title;
   document.getElementById("wSub").textContent = activeWorkout.sub;
   document.getElementById("wRest").textContent =
@@ -686,8 +689,8 @@ function renderExList(){
 }
 
 function toggleEx(i, el){
-  if(doneSet.has(i)){ doneSet.delete(i); el.classList.remove("done"); el.querySelector(".check").textContent=""; }
-  else{ doneSet.add(i); el.classList.add("done"); el.querySelector(".check").textContent="✓";
+  if(doneSet.has(i)){ doneSet.delete(i); delete setsDone[i]; el.classList.remove("done"); el.querySelector(".check").textContent=""; }
+  else{ doneSet.add(i); setsDone[i] = activeWorkout.exercises[i].sets; el.classList.add("done"); el.querySelector(".check").textContent="✓";
     if(navigator.vibrate) navigator.vibrate(30); }
   updateFinishBtn();
 }
@@ -724,6 +727,7 @@ function startFlow(){
   ensureAudio();
   keepAwake();
   doneSet = new Set();
+  setsDone = {};
   flowState = {segs: buildSegments(activeWorkout), idx: 0, remaining: 0, timerId: null, paused: false};
   showScreen("flow");
   window.scrollTo(0,0);
@@ -759,8 +763,10 @@ function tickSeg(){
 
 function completeSegment(){
   const f = flowState, seg = f.segs[f.idx];
-  if(seg.type === "work" && seg.si === activeWorkout.exercises[seg.ei].sets - 1){
-    doneSet.add(seg.ei);
+  if(seg.type === "work"){
+    const ex = activeWorkout.exercises[seg.ei];
+    setsDone[seg.ei] = Math.min((setsDone[seg.ei] || 0) + 1, ex.sets);
+    if(setsDone[seg.ei] === ex.sets) doneSet.add(seg.ei);
   }
   f.idx++;
   if(f.idx >= f.segs.length){
@@ -773,6 +779,20 @@ function completeSegment(){
 }
 
 function segSkip(){ ensureAudio(); if(flowState) completeSegment(); }
+
+// Пропустить всё текущее упражнение: оставшиеся подходы не засчитываются,
+// XP за упражнение начислится пропорционально уже выполненным подходам.
+function skipExercise(){
+  const f = flowState;
+  if(!f) return;
+  ensureAudio();
+  const curEi = f.segs[f.idx].ei;
+  let j = f.idx;
+  while(j < f.segs.length && f.segs[j].ei === curEi) j++;
+  if(j >= f.segs.length){ stopRestTimer(); soundDone(); finishWorkout(); return; }
+  f.idx = j;
+  startSegment();
+}
 
 function segAdd(sec){
   const f = flowState;
@@ -864,11 +884,17 @@ function exitFlow(){
 
 // ================= FINISH =================
 function finishWorkout(){
-  if(!doneSet.size) return;
+  // XP пропорционален выполненным подходам: пропустил половину подходов — получил половину XP упражнения
+  let xp = 0, fullCount = 0;
+  activeWorkout.exercises.forEach((e, i) => {
+    const dn = Math.min(setsDone[i] || 0, e.sets);
+    if(dn === e.sets) fullCount++;
+    xp += Math.round(e.xp * dn / e.sets);
+  });
+  if(xp <= 0) return;
   stopRestTimer(); flowState = null; releaseAwake();
 
-  const all = doneSet.size === activeWorkout.exercises.length;
-  let xp = activeWorkout.exercises.reduce((a,e,i)=> doneSet.has(i) ? a+e.xp : a, 0);
+  const all = fullCount === activeWorkout.exercises.length;
   if(all) xp += 20;
 
   const prevLvl = levelFromXp(state.xp).lvl;
@@ -900,7 +926,9 @@ function finishWorkout(){
   document.getElementById("cTitle").textContent = all ? "Идеально! Всё выполнено!" : "Тренировка завершена!";
   document.getElementById("cSub").textContent = newAch.length
     ? "Новое достижение: " + newAch.map(a=>a.icon+" "+a.name).join(", ")
-    : "Серия: 🔥 " + state.streak + " дн.";
+    : all
+      ? "Серия: 🔥 " + state.streak + " дн."
+      : "Полностью: " + fullCount + " из " + activeWorkout.exercises.length + " упражнений · XP пропорционален подходам · 🔥 " + state.streak + " дн.";
   document.getElementById("cXp").textContent = "+" + xp + " XP";
   const lvlEl = document.getElementById("cLvl");
   if(newLvl > prevLvl){ lvlEl.textContent = "🚀 Новый уровень: " + newLvl + "!"; lvlEl.style.display = "block"; }
