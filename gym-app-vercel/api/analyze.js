@@ -88,16 +88,22 @@ export default async function handler(req, res) {
       : "Посчитай еду на фото.",
   });
 
+  // Два режима: cheap = Haiku 4.5 (~$0.005-0.01 за анализ), best = Opus 5 (~$0.03-0.04).
+  const mode = body.mode === "best" ? "best" : "cheap";
+  const model =
+    process.env.ANTHROPIC_MODEL ||
+    (mode === "best" ? "claude-opus-5" : "claude-haiku-4-5");
+  const outputConfig = { format: { type: "json_schema", schema: SCHEMA } };
+  // effort поддерживается на Opus 5, но не на Haiku 4.5
+  if (mode === "best") outputConfig.effort = "low";
+
   const client = new Anthropic();
   try {
     const response = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL || "claude-opus-5",
+      model,
       max_tokens: 8000,
       system: SYSTEM,
-      output_config: {
-        format: { type: "json_schema", schema: SCHEMA },
-        effort: "low",
-      },
+      output_config: outputConfig,
       messages: [{ role: "user", content }],
     });
 

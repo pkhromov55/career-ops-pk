@@ -183,6 +183,10 @@
   .result-card{background:#16281f; border:1px solid var(--accent2); border-radius:14px; padding:14px; margin:12px 0;}
   .fdel{background:none; border:none; color:var(--danger); cursor:pointer; font-size:14px; padding:2px 6px;}
   #analyzeStatus{color:var(--muted); font-size:13px; margin-top:8px; min-height:18px;}
+  .goal-row{display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:6px;}
+  .goal-row span:first-child{cursor:pointer;}
+  .rowbtns button.active{background:var(--accent); color:#fff;}
+  #wtChart svg{width:100%; height:120px; display:block; margin-bottom:10px; background:var(--card); border-radius:14px;}
 
   /* Celebration overlay */
   .overlay{position:fixed; inset:0; background:rgba(10,12,25,.92); display:none;
@@ -302,9 +306,12 @@
       <input id="wtInput" type="number" step="0.1" min="20" max="400" placeholder="кг">
       <button onclick="saveWeight()">Записать</button>
     </div>
+    <div id="wtChart"></div>
     <div class="hist" id="wtList"></div>
 
     <h2>Еда сегодня <span id="kcalToday" style="color:var(--gold)"></span></h2>
+    <div class="goal-row"><span onclick="editGoal()" id="goalText">Цель: 2000 ккал ✎</span><span id="goalPct"></span></div>
+    <div class="bar" style="margin-bottom:14px"><div class="bar-fill" id="goalBar" style="width:0%"></div></div>
     <div class="food-add">
       <textarea id="foodText" placeholder="Что съел? Например: гречка ~200 г и куриная грудка"></textarea>
       <input id="foodPhoto" type="file" accept="image/*" style="display:none" onchange="foodPhotoChosen()">
@@ -320,6 +327,13 @@
 
     <h2>Последние 7 дней</h2>
     <div class="hist" id="weekList"></div>
+
+    <h2>Модель анализа</h2>
+    <div class="rowbtns">
+      <button id="modeCheap" onclick="setModel('cheap')">💰 Экономная</button>
+      <button id="modeBest" onclick="setModel('best')">🏆 Опус 5</button>
+    </div>
+    <div class="macro" style="margin-top:8px">Экономная — Claude Haiku 4.5, ≈$0.01 за анализ (~$1–1.5/мес при 5 записях в день). Опус 5 — максимальное качество для сложных блюд, ≈$0.03–0.04 за анализ (~$5/мес).</div>
     <div style="height:30px"></div>
   </div>
 
@@ -462,7 +476,19 @@ const ACHIEVEMENTS = [
   {id:"allTypes",icon:"🌈", name:"Универсал",    desc:"Все 4 базовые",     test:s=>BASE_IDS.every(id=>(s.counts[id]||0)>0)},
   {id:"knee10",  icon:"🦵", name:"Реабилитация", desc:"10 трен. колена",   test:s=>(s.counts.knee||0)>=10},
   {id:"maker",   icon:"🛠️", name:"Конструктор",  desc:"Своя тренировка",   test:s=>s.workouts.some(w=>w.custom)},
+  {id:"food10",  icon:"🍽️", name:"Гурман",       desc:"10 записей еды",    test:s=>(s.food||[]).length>=10},
+  {id:"weight7", icon:"⚖️", name:"На весах",     desc:"7 записей веса",    test:s=>(s.weights||[]).length>=7},
 ];
+
+function checkAchievements(){
+  const newAch = [];
+  ACHIEVEMENTS.forEach(a => {
+    if(!state.achievements.includes(a.id) && a.test(state)){
+      state.achievements.push(a.id); newAch.push(a);
+    }
+  });
+  return newAch;
+}
 
 // ================= СПРАВКА ПО УПРАЖНЕНИЯМ =================
 // Ключ — точное название упражнения. У своих упражнений справка хранится в поле help.
@@ -533,6 +559,7 @@ function normalize(raw){
   });
   if(!Array.isArray(st.food)) st.food = [];
   if(!Array.isArray(st.weights)) st.weights = [];
+  if(!(st.kcalGoal > 0)) st.kcalGoal = 2000;
   return st;
 }
 let state = load();
@@ -543,7 +570,7 @@ function load(){
 }
 function defaults(){
   return {xp:0, total:0, counts:{}, history:[], streak:0, bestStreak:0, lastDay:null,
-    achievements:[], workouts:JSON.parse(JSON.stringify(DEFAULT_WORKOUTS)), food:[], weights:[]};
+    achievements:[], workouts:JSON.parse(JSON.stringify(DEFAULT_WORKOUTS)), food:[], weights:[], kcalGoal:2000};
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(state)); cloudPush(); }
 
@@ -660,7 +687,7 @@ function renderHome(){
   const dsum = (state.food || []).filter(f => f.date === today()).reduce((a,f) => a + f.kcal, 0);
   const lastW = (state.weights || [])[state.weights.length - 1];
   const ds = document.getElementById("diarySummary");
-  if(ds) ds.textContent = "Сегодня: " + dsum + " ккал" + (lastW ? " · вес " + lastW.kg.toFixed(1) + " кг" : "");
+  if(ds) ds.textContent = "Сегодня: " + dsum + " / " + (state.kcalGoal || 2000) + " ккал" + (lastW ? " · вес " + lastW.kg.toFixed(1) + " кг" : "");
 
   const list = document.getElementById("workoutList");
   list.innerHTML = "";
@@ -975,12 +1002,7 @@ function finishWorkout(){
   state.history.push({id:activeWorkout.id, title:activeWorkout.title, date:t, xp});
   if(state.history.length > 200) state.history = state.history.slice(-200);
 
-  const newAch = [];
-  ACHIEVEMENTS.forEach(a => {
-    if(!state.achievements.includes(a.id) && a.test(state)){
-      state.achievements.push(a.id); newAch.push(a);
-    }
-  });
+  const newAch = checkAchievements();
   save();
 
   const newLvl = levelFromXp(state.xp).lvl;
@@ -1012,13 +1034,50 @@ function saveWeight(){
   if(!v || v < 20 || v > 400){ alert("Введи вес в кг, например 82.5"); return; }
   const t = today();
   const ex = state.weights.find(w => w.date === t);
-  if(ex) ex.kg = v; else state.weights.push({date: t, kg: v});
+  if(ex) ex.kg = v;
+  else { state.weights.push({date: t, kg: v}); state.xp += 5; }  // +5 XP за первую запись веса за день
   state.weights.sort((a,b) => a.date < b.date ? -1 : 1);
   if(state.weights.length > 400) state.weights = state.weights.slice(-400);
   document.getElementById("wtInput").value = "";
+  checkAchievements();
   save();
   renderDiary();
   if(navigator.vibrate) navigator.vibrate(30);
+}
+
+function editGoal(){
+  const v = parseInt(prompt("Дневная цель, ккал:", state.kcalGoal || 2000), 10);
+  if(v >= 500 && v <= 10000){ state.kcalGoal = v; save(); renderDiary(); }
+}
+
+// ===== модель анализа (хранится на устройстве) =====
+function getModel(){ return localStorage.getItem("gymquest-model") || "cheap"; }
+function setModel(m){ localStorage.setItem("gymquest-model", m); renderModelToggle(); }
+function renderModelToggle(){
+  const m = getModel();
+  const c = document.getElementById("modeCheap"), b = document.getElementById("modeBest");
+  if(c) c.classList.toggle("active", m === "cheap");
+  if(b) b.classList.toggle("active", m === "best");
+}
+
+function drawWeightChart(){
+  const el = document.getElementById("wtChart");
+  const data = state.weights.slice(-30);
+  if(data.length < 2){ el.innerHTML = ""; return; }
+  const W = 320, H = 120, P = 8;
+  const vals = data.map(w => w.kg);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const span = Math.max(max - min, 0.5);
+  const pts = data.map((w, i) => {
+    const x = P + i * (W - 2 * P) / (data.length - 1);
+    const y = (H - P) - (w.kg - min) / span * (H - 2 * P - 16);
+    return x.toFixed(1) + "," + y.toFixed(1);
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <polyline points="${pts.join(" ")}" fill="none" stroke="var(--accent2)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <text x="${P}" y="14" fill="var(--muted)" font-size="10">${max.toFixed(1)} кг</text>
+    <text x="${P}" y="${H - 4}" fill="var(--muted)" font-size="10">${min.toFixed(1)} кг</text>
+  </svg>`;
 }
 
 let pendingPhoto = null;   // {data, media_type} — сжатое фото для отправки
@@ -1061,6 +1120,7 @@ async function analyzeFood(){
         text,
         image: pendingPhoto ? pendingPhoto.data : undefined,
         media_type: pendingPhoto ? pendingPhoto.media_type : undefined,
+        mode: getModel(),
       }),
     });
     const j = await r.json();
@@ -1104,6 +1164,8 @@ function saveFood(){
     items: r.items,
   });
   if(state.food.length > 500) state.food = state.food.slice(-500);
+  state.xp += 3;  // +3 XP за запись еды
+  checkAchievements();
   save();
   document.getElementById("foodText").value = "";
   cancelFood();
@@ -1144,6 +1206,17 @@ function renderDiary(){
   const todayFood = state.food.map((f, i) => ({f, i})).filter(x => x.f.date === t);
   const sum = todayFood.reduce((a, x) => a + x.f.kcal, 0);
   document.getElementById("kcalToday").textContent = sum ? "· " + sum + " ккал" : "";
+
+  // цель по калориям
+  const goal = state.kcalGoal || 2000;
+  document.getElementById("goalText").textContent = "Цель: " + goal + " ккал ✎";
+  document.getElementById("goalPct").textContent = sum + " / " + goal + " ккал" + (sum > goal ? " ⚠️" : "");
+  const gb = document.getElementById("goalBar");
+  gb.style.width = Math.min(100, Math.round(sum / goal * 100)) + "%";
+  gb.style.background = sum > goal ? "var(--danger)" : "";
+
+  drawWeightChart();
+  renderModelToggle();
   const fl = document.getElementById("foodList");
   fl.innerHTML = todayFood.length ? todayFood.map(x =>
     `<div class="hrow"><span>${x.f.time} · ${esc(x.f.desc)}<br><small class="macro">Б ${x.f.p} · Ж ${x.f.f} · У ${x.f.c}</small></span>
