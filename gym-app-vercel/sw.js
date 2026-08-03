@@ -1,4 +1,4 @@
-const CACHE = "gymquest-vercel-v1";
+const CACHE = "gymquest-vercel-v5";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", e => {
