@@ -167,6 +167,23 @@
   .del-workout{width:100%; background:transparent; border:1px solid var(--danger); color:var(--danger);
     font-size:15px; font-weight:700; padding:13px; border-radius:14px; cursor:pointer;}
 
+  /* ===== Diary ===== */
+  .weight-row{display:flex; gap:10px; margin-bottom:12px;}
+  .weight-row input{flex:1; min-width:0; background:var(--card); border:1px solid #2b3357; color:var(--text);
+    font-size:16px; padding:12px; border-radius:12px;}
+  .weight-row button{background:var(--accent); color:#fff; border:none; padding:12px 18px;
+    border-radius:12px; font-weight:700; cursor:pointer; white-space:nowrap;}
+  .food-add textarea{width:100%; background:var(--card); border:1px solid #2b3357; color:var(--text);
+    font-size:15px; padding:12px; border-radius:12px; resize:vertical; min-height:56px; font-family:inherit; margin-bottom:10px;}
+  #photoPreviewWrap{margin-top:10px;}
+  #photoPreview{max-width:100%; border-radius:12px;}
+  .fitem{display:flex; justify-content:space-between; gap:10px; padding:6px 0; font-size:14px;}
+  .fitem.total{border-top:1px solid #2b4a3d; margin-top:6px; padding-top:8px; font-weight:700;}
+  .macro{color:var(--muted); font-size:12px;}
+  .result-card{background:#16281f; border:1px solid var(--accent2); border-radius:14px; padding:14px; margin:12px 0;}
+  .fdel{background:none; border:none; color:var(--danger); cursor:pointer; font-size:14px; padding:2px 6px;}
+  #analyzeStatus{color:var(--muted); font-size:13px; margin-top:8px; min-height:18px;}
+
   /* Celebration overlay */
   .overlay{position:fixed; inset:0; background:rgba(10,12,25,.92); display:none;
     align-items:center; justify-content:center; z-index:50; text-align:center; padding:24px;}
@@ -224,6 +241,13 @@
       </div>
     </div>
 
+    <h2>Дневник</h2>
+    <div class="wcard" onclick="openDiary()">
+      <div class="wicon">🍽</div>
+      <div class="winfo"><b>Питание и вес</b><small id="diarySummary">Фоткай еду — Claude посчитает калории</small></div>
+      <div class="wxp">→</div>
+    </div>
+
     <h2>Тренировки</h2>
     <div id="workoutList"></div>
 
@@ -266,6 +290,37 @@
       <button onclick="skipExercise()" title="XP за упражнение — пропорционально выполненным подходам">⏭ Упражн.</button>
     </div>
     <button class="flow-exit" onclick="exitFlow()">Выйти из режима тренировки</button>
+  </div>
+
+  <!-- ============ DIARY ============ -->
+  <div class="screen" id="diary">
+    <button class="back" onclick="goHome()">← Назад</button>
+    <div class="wtitle">🍽 Дневник</div>
+
+    <h2>Вес</h2>
+    <div class="weight-row">
+      <input id="wtInput" type="number" step="0.1" min="20" max="400" placeholder="кг">
+      <button onclick="saveWeight()">Записать</button>
+    </div>
+    <div class="hist" id="wtList"></div>
+
+    <h2>Еда сегодня <span id="kcalToday" style="color:var(--gold)"></span></h2>
+    <div class="food-add">
+      <textarea id="foodText" placeholder="Что съел? Например: гречка ~200 г и куриная грудка"></textarea>
+      <input id="foodPhoto" type="file" accept="image/*" style="display:none" onchange="foodPhotoChosen()">
+      <div class="rowbtns">
+        <button onclick="document.getElementById('foodPhoto').click()">📷 Фото</button>
+        <button id="analyzeBtn" onclick="analyzeFood()">🤖 Посчитать</button>
+      </div>
+      <div id="photoPreviewWrap" style="display:none"><img id="photoPreview" alt="Фото еды"></div>
+      <div id="analyzeStatus"></div>
+    </div>
+    <div id="foodResult"></div>
+    <div class="hist" id="foodList"></div>
+
+    <h2>Последние 7 дней</h2>
+    <div class="hist" id="weekList"></div>
+    <div style="height:30px"></div>
   </div>
 
   <!-- ============ EDITOR ============ -->
@@ -476,6 +531,8 @@ function normalize(raw){
       }
     });
   });
+  if(!Array.isArray(st.food)) st.food = [];
+  if(!Array.isArray(st.weights)) st.weights = [];
   return st;
 }
 let state = load();
@@ -486,7 +543,7 @@ function load(){
 }
 function defaults(){
   return {xp:0, total:0, counts:{}, history:[], streak:0, bestStreak:0, lastDay:null,
-    achievements:[], workouts:JSON.parse(JSON.stringify(DEFAULT_WORKOUTS))};
+    achievements:[], workouts:JSON.parse(JSON.stringify(DEFAULT_WORKOUTS)), food:[], weights:[]};
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(state)); cloudPush(); }
 
@@ -599,6 +656,11 @@ function renderHome(){
 
   const weekAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
   document.getElementById("stWeek").textContent = state.history.filter(h => h.date >= weekAgo).length;
+
+  const dsum = (state.food || []).filter(f => f.date === today()).reduce((a,f) => a + f.kcal, 0);
+  const lastW = (state.weights || [])[state.weights.length - 1];
+  const ds = document.getElementById("diarySummary");
+  if(ds) ds.textContent = "Сегодня: " + dsum + " ккал" + (lastW ? " · вес " + lastW.kg.toFixed(1) + " кг" : "");
 
   const list = document.getElementById("workoutList");
   list.innerHTML = "";
@@ -940,6 +1002,161 @@ function finishWorkout(){
 function closeCelebration(){
   document.getElementById("overlay").classList.remove("show");
   goHome();
+}
+
+// ================= ДНЕВНИК (еда и вес) =================
+function openDiary(){ renderDiary(); showScreen("diary"); window.scrollTo(0,0); }
+
+function saveWeight(){
+  const v = parseFloat(String(document.getElementById("wtInput").value).replace(",", "."));
+  if(!v || v < 20 || v > 400){ alert("Введи вес в кг, например 82.5"); return; }
+  const t = today();
+  const ex = state.weights.find(w => w.date === t);
+  if(ex) ex.kg = v; else state.weights.push({date: t, kg: v});
+  state.weights.sort((a,b) => a.date < b.date ? -1 : 1);
+  if(state.weights.length > 400) state.weights = state.weights.slice(-400);
+  document.getElementById("wtInput").value = "";
+  save();
+  renderDiary();
+  if(navigator.vibrate) navigator.vibrate(30);
+}
+
+let pendingPhoto = null;   // {data, media_type} — сжатое фото для отправки
+let pendingResult = null;  // результат анализа до подтверждения
+
+function foodPhotoChosen(){
+  const f = document.getElementById("foodPhoto").files[0];
+  if(!f) return;
+  const img = new Image();
+  const url = URL.createObjectURL(f);
+  img.onload = () => {
+    // сжимаем до 1024px по длинной стороне — быстрее аплоад, дешевле анализ
+    const max = 1024;
+    const k = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * k);
+    c.height = Math.round(img.height * k);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    const dataUrl = c.toDataURL("image/jpeg", 0.85);
+    pendingPhoto = {data: dataUrl.split(",")[1], media_type: "image/jpeg"};
+    document.getElementById("photoPreview").src = dataUrl;
+    document.getElementById("photoPreviewWrap").style.display = "block";
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+}
+
+async function analyzeFood(){
+  const text = document.getElementById("foodText").value.trim();
+  if(!text && !pendingPhoto){ alert("Опиши еду текстом или добавь фото"); return; }
+  const st = document.getElementById("analyzeStatus");
+  const btn = document.getElementById("analyzeBtn");
+  st.textContent = "🤖 Claude считает калории…";
+  btn.disabled = true;
+  try{
+    const r = await fetch("api/analyze", {
+      method: "POST",
+      headers: pinHeaders({"Content-Type": "application/json"}),
+      body: JSON.stringify({
+        text,
+        image: pendingPhoto ? pendingPhoto.data : undefined,
+        media_type: pendingPhoto ? pendingPhoto.media_type : undefined,
+      }),
+    });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.hint || j.error || ("HTTP " + r.status));
+    pendingResult = j;
+    renderFoodResult();
+    st.textContent = "";
+  }catch(e){
+    st.textContent = "⚠️ " + e.message;
+  }
+  btn.disabled = false;
+}
+
+function renderFoodResult(){
+  const box = document.getElementById("foodResult");
+  if(!pendingResult){ box.innerHTML = ""; return; }
+  const r = pendingResult;
+  box.innerHTML = `<div class="result-card">
+    ${r.items.map(i => `<div class="fitem"><span>${esc(i.name)} · ${Math.round(i.grams)} г</span><b>${Math.round(i.kcal)} ккал</b></div>`).join("")}
+    <div class="fitem total"><span>Итого</span><b>${Math.round(r.total.kcal)} ккал</b></div>
+    <div class="macro">Белки ${Math.round(r.total.protein)} г · Жиры ${Math.round(r.total.fat)} г · Углеводы ${Math.round(r.total.carbs)} г</div>
+    ${r.comment ? `<div class="macro" style="margin-top:6px">${esc(r.comment)}</div>` : ""}
+    <div class="rowbtns" style="margin-top:10px">
+      <button onclick="saveFood()" style="background:var(--accent2); color:#04120d">✓ Сохранить</button>
+      <button onclick="cancelFood()">Отмена</button>
+    </div>
+  </div>`;
+}
+
+function saveFood(){
+  if(!pendingResult) return;
+  const r = pendingResult;
+  state.food.push({
+    date: today(),
+    time: new Date().toTimeString().slice(0,5),
+    desc: r.items.map(i => i.name).join(", "),
+    kcal: Math.round(r.total.kcal),
+    p: Math.round(r.total.protein),
+    f: Math.round(r.total.fat),
+    c: Math.round(r.total.carbs),
+    items: r.items,
+  });
+  if(state.food.length > 500) state.food = state.food.slice(-500);
+  save();
+  document.getElementById("foodText").value = "";
+  cancelFood();
+  renderDiary();
+  if(navigator.vibrate) navigator.vibrate([40,40,40]);
+}
+
+function cancelFood(){
+  pendingResult = null;
+  pendingPhoto = null;
+  document.getElementById("photoPreviewWrap").style.display = "none";
+  document.getElementById("foodPhoto").value = "";
+  renderFoodResult();
+}
+
+function delFood(idx){
+  state.food.splice(idx, 1);
+  save();
+  renderDiary();
+}
+
+function renderDiary(){
+  // вес: последние записи с дельтой
+  const wl = document.getElementById("wtList");
+  const ws = state.weights.slice(-10).reverse();
+  wl.innerHTML = ws.length ? ws.map((w, i) => {
+    const prev = ws[i+1];
+    const d = prev ? w.kg - prev.kg : 0;
+    const dTxt = prev ? (d > 0 ? "+" + d.toFixed(1) : d.toFixed(1)) : "";
+    return `<div class="hrow"><span>${w.date}</span>
+      <span><b>${w.kg.toFixed(1)} кг</b> <small style="color:${d > 0 ? "var(--danger)" : "var(--accent2)"}">${dTxt}</small></span></div>`;
+  }).join("") : `<div class="empty">Запиши первый вес ⚖️</div>`;
+  const last = state.weights[state.weights.length - 1];
+  document.getElementById("wtInput").placeholder = last ? last.kg.toFixed(1) : "кг";
+
+  // еда за сегодня
+  const t = today();
+  const todayFood = state.food.map((f, i) => ({f, i})).filter(x => x.f.date === t);
+  const sum = todayFood.reduce((a, x) => a + x.f.kcal, 0);
+  document.getElementById("kcalToday").textContent = sum ? "· " + sum + " ккал" : "";
+  const fl = document.getElementById("foodList");
+  fl.innerHTML = todayFood.length ? todayFood.map(x =>
+    `<div class="hrow"><span>${x.f.time} · ${esc(x.f.desc)}<br><small class="macro">Б ${x.f.p} · Ж ${x.f.f} · У ${x.f.c}</small></span>
+     <span style="white-space:nowrap"><b style="color:var(--gold)">${x.f.kcal}</b><button class="fdel" onclick="delFood(${x.i})">✕</button></span></div>`
+  ).join("") : `<div class="empty">Сегодня записей нет</div>`;
+
+  // суммы за последние 7 дней с записями
+  const days = {};
+  state.food.forEach(f => { days[f.date] = (days[f.date] || 0) + f.kcal; });
+  const keys = Object.keys(days).sort().slice(-7).reverse();
+  document.getElementById("weekList").innerHTML = keys.length
+    ? keys.map(d => `<div class="hrow"><span>${d}</span><b>${days[d]} ккал</b></div>`).join("")
+    : `<div class="empty">Пока пусто</div>`;
 }
 
 // ================= EDITOR =================
